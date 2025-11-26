@@ -1,0 +1,34 @@
+﻿## Environment
+.env
+*.env
+.env.example
+
+## Python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+## Virtual environments
+.venv/
+venv/
+
+## Logs and local artifacts
+logs/
+geocode_log.json
+code_review.md
+elements_sizes.md
+
+## OS/editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+## Node (not used now, but safe)
+node_modules/
+*.log
+
+## Patches and temp files
+fix.patch
+*.patch
+*.tmp

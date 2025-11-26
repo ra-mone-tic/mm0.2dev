@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="minimal">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MeowMap</title>
+  <link rel="icon" href="assets/Group 68.svg" type="image/svg+xml">
+
+  <!-- Подключаем стили MapLibre и тему -->
+  <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet">
+  <link href="assets/css/theme.css" rel="stylesheet">
+</head>
+<body>
+  <div id="controls">
+    <div class="date-input-container">
+      <input type="date" id="event-date">
+    </div>
+    <div class="header-buttons">
+      <span id="help" aria-label="Открыть приветственный экран" role="button" tabindex="0">?</span>
+      <span id="burger" aria-label="Открыть список событий" role="button" tabindex="0">☰</span>
+    </div>
+  </div>
+
+  <img id="logo" src="assets/Vector.png" alt="Meow Records - смена темы" role="button" tabindex="0">
+
+  <div id="layout">
+    <div id="map" role="application" aria-label="Карта событий"></div>
+
+    <!-- Кастомные кнопки навигации карты -->
+    <div class="custom-controls">
+      <div class="zoom-control">
+        <div class="zoom-btn" id="zoom-in" aria-label="Увеличить масштаб">+</div>
+        <div class="separator"></div>
+        <div class="zoom-btn" id="zoom-out" aria-label="Уменьшить масштаб">−</div>
+      </div>
+      <div class="locate-control" id="locate-btn" aria-label="Определить текущее местоположение на карте">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" />
+          <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none" />
+          <path d="M12 4v2M12 18v2M4 12h2M18 12h2" stroke="currentColor" stroke-width="2" />
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <aside id="sidebar" aria-label="Список событий">
+    <div class="sidebar-footer">
+      <button id="toggleArchive" type="button">Архив</button>
+    </div>
+    <div class="sidebar-content">
+      <div class="sidebar-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="margin:0;">События</h3>
+      </div>
+      <div id="upcoming"></div>
+    </div>
+  </aside>
+
+  <div id="bottomBar" role="search">
+    <div class="bottom-bar__inner">
+      <div class="search-field">
+        <span class="search-field__icon" aria-hidden="true">🔍</span>
+        <input type="search" id="global-search" placeholder="Поиск событий и мест" autocomplete="off" enterkeyhint="search" aria-label="Поиск событий и мест">
+        <button type="button" id="search-clear" aria-label="Очистить поиск">×</button>
+      </div>
+    </div>
+  </div>
+
+  <section id="search-panel" aria-hidden="true" role="dialog" aria-label="Результаты поиска">
+    <div class="search-panel__handle" aria-hidden="true"></div>
+    <p id="search-label" class="search-panel__label">Подсказки</p>
+    <ul id="search-results" role="listbox" aria-label="Результаты поиска"></ul>
+    <p id="search-empty" class="search-panel__empty">Загрузка данных…</p>
+  </section>
+
+  <!-- Скрипты -->
+  <script defer src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+  <script type="module" src="assets/js/main.js"></script>
+  <script type="module" src="assets/js/theme.js"></script>
+  <!-- Календарь -->
+  <div id="calendar-modal" class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="calendar-title" hidden>
+    <div class="calendar-modal__backdrop" aria-hidden="true"></div>
+    <div class="calendar-modal__content">
+      <div class="calendar">
+        <div class="calendar__header">
+          <button id="calendar-prev" class="calendar__nav calendar__nav--prev" aria-label="Предыдущий месяц">‹</button>
+          <div class="calendar__month-year"></div>
+          <button id="calendar-next" class="calendar__nav calendar__nav--next" aria-label="Следующий месяц">›</button>
+        </div>
+        <div class="calendar__weekdays">
+          <div class="calendar__weekday">Пн</div>
+          <div class="calendar__weekday">Вт</div>
+          <div class="calendar__weekday">Ср</div>
+          <div class="calendar__weekday">Чт</div>
+          <div class="calendar__weekday">Пт</div>
+          <div class="calendar__weekday">Сб</div>
+          <div class="calendar__weekday">Вс</div>
+        </div>
+        <div class="calendar__days"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="copy-toast" role="status" aria-live="polite" hidden>Ссылка скопирована</div>
+
+  <!-- Welcome Modal -->
+  <div id="welcome-modal" class="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title" hidden>
+    <div class="welcome-modal__backdrop"></div>
+    <div class="welcome-modal__content" id="welcome-content"></div>
+  </div>
+
+</body>
+</html>
