@@ -276,53 +276,47 @@ def main():
         geolog = {}
 
         # Загрузить существующие события
-        existing_events = []
+        existing_events_dict = {}
         if OUTPUT_JSON.exists():
             try:
                 existing_events = json.loads(OUTPUT_JSON.read_text(encoding='utf-8'))
-                logger.info(f"Загружено {len(existing_events)} существующих событий")
+                existing_events_dict = {f"{e['date']}|{e['title']}|{e['location']}|{e.get('time', '')}": e for e in existing_events}
+                logger.info(f"Загружено {len(existing_events_dict)} существующих событий")
             except Exception as e:
                 logger.warning(f"Не удалось загрузить существующие события: {e}")
 
         # Загрузить данные из Google Sheets
         df = load_sheets_data(GOOGLE_SHEETS_URL)
 
-        # Нормализовать и фильтровать события, оптимизировано с проверкой duplicates перед geocoding
-        existing_keys = set(f"{e['date']}|{e['title']}|{e['location']}" for e in existing_events)
-        new_events = []
+        # Нормализовать и фильтровать события, обновлять существующие или добавлять новые
+        updated_count = 0
+        added_count = 0
         for idx, row in df.iterrows():
             if idx <= 2:  # Пропустить первые две строки (шаблон/пример)
                 continue
-            # Быстрая проверка на duplicates без geocoding
-            col_names = list(row.index)
-            date = str(row[col_names[1]]) if pd.notna(row[col_names[1]]) else ''
-            title = str(row[col_names[2]]) if pd.notna(row[col_names[2]]) else ''
-            location = str(row[col_names[3]]) if pd.notna(row[col_names[3]]) else ''
-            if not date or not title or not location:
-                logger.warning(f"Пропуск строки {idx}: отсутствуют обязательные поля")
-                continue
-            event_key = f"{date}|{title}|{location}"
-            if event_key in existing_keys:
-                logger.debug(f"Событие уже существует: {title}")
-                continue
-            # Теперь полная нормализация с geocoding только для новых
+            # Полная нормализация с geocoding
             event = normalize_event_row(row)
             if event:
-                new_events.append(event)
-                logger.info(f"Новое событие: {event['title']}")
-                # Добавить key чтобы избежать duplicates в пределах таблицы
-                existing_keys.add(event_key)
+                event_key = f"{event['date']}|{event['title']}|{event['location']}|{event.get('time', '')}"
+                if event_key in existing_events_dict:
+                    existing_events_dict[event_key].update(event)
+                    logger.debug(f"Обновлено событие: {event['title']}")
+                    updated_count += 1
+                else:
+                    existing_events_dict[event_key] = event
+                    logger.info(f"Добавлено новое событие: {event['title']}")
+                    added_count += 1
 
-        logger.info(f"Из Sheets извлечено {len(new_events)} новых событий")
+        logger.info(f"Обработано: {updated_count} обновлений, {added_count} добавлений")
 
-        if not new_events:
-            logger.warning("Новые события не найдены, сохраняем существующие")
+        if not existing_events_dict:
+            logger.warning("События не найдены")
             return
 
-        # Объединить с существующими
-        all_events = existing_events + new_events
+        # Получить список событий
+        all_events = list(existing_events_dict.values())
 
-        logger.info(f"Общий датасет: {len(all_events)} событий ({len(existing_events)} существующих + {len(new_events)} новых)")
+        logger.info(f"Общий датасет: {len(all_events)} событий")
 
         # Сортировать по дате
         all_events.sort(key=lambda x: x['date'])
