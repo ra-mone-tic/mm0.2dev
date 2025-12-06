@@ -250,6 +250,9 @@ def normalize_event_row(row):
         logger.warning(f"Пропуск строки: отсутствуют обязательные поля: date='{event.get('date')}', title='{event.get('title')}', location='{event.get('location')}'")
         return None
 
+    # Нормализация адреса: удаление кавычек и лишних пробелов
+    event['location'] = event['location'].strip('"').strip()
+
     # Геокодинг
     lat, lon = geocode_addr(event['location'])
     if lat is not None and lon is not None:
