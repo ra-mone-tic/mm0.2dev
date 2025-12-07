@@ -333,6 +333,49 @@ html[data-theme="amoled"] input[type="date"]{
   background: color-mix(in srgb, #d2cde7 90%, black);
 }
 
+
+
+.grouped-event-item {
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background var(--fx-fast);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.grouped-event-item:hover {
+  background: var(--surface-2);
+}
+
+.grouped-event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.grouped-event-header strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.grouped-event-time {
+  font-size: 10px;
+  color: var(--text-1);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
 /* 4) Scrollbar (webkit) */
 *::-webkit-scrollbar{ width:10px; height:10px; }
 *::-webkit-scrollbar-track{ background: transparent; }

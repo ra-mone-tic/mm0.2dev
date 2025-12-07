@@ -71,6 +71,8 @@ class MapManager {
     this.map = null;
     this.markers = [];
     this.markerById = new Map();
+    this.eventById = new Map();
+    this.currentPopups = new Set();
     this.isInitialized = false;
     this.currentDate = null;
     this.currentEvents = [];
@@ -119,6 +121,11 @@ class MapManager {
     // Disable rotation
     this.map.dragRotate.disable();
     this.map.touchZoomRotate.disableRotation();
+
+    // Hide mini-markers on map click
+    this.map.on('click', () => {
+      this._hideAllMiniMarkers();
+    });
   }
 
   /**
@@ -288,9 +295,7 @@ class MapManager {
     if (!this.currentEvents.length || !this.onShareCallback) return;
 
     this.clearMarkers();
-    this.currentEvents.forEach(event => {
-      this.addMarker(event, this.onShareCallback);
-    });
+    this.addMarkersForGroupedEvents(this.currentEvents, this.onShareCallback);
   }
 
   /**
@@ -300,18 +305,25 @@ class MapManager {
     this.markers.forEach(marker => marker.remove());
     this.markers.length = 0;
     this.markerById.clear();
+    this.eventById.clear();
   }
 
   /**
    * Close all open popups
    */
   closeAllPopups() {
+    // Close marker popups
     this.markers.forEach(marker => {
       const popup = marker.getPopup();
       if (popup && popup.isOpen()) {
         marker.togglePopup();
       }
     });
+    // Close standalone popups
+    this.currentPopups.forEach(popup => popup.remove());
+    this.currentPopups.clear();
+    // Hide all mini-markers
+    this._hideAllMiniMarkers();
   }
 
   /**
@@ -364,9 +376,191 @@ class MapManager {
 
     this.markers.push(marker);
     this.markerById.set(event.id, marker);
+    this.eventById.set(event.id, event);
 
     // Setup popup expand/collapse
     this._setupPopupHandlers(popup, event);
+  }
+
+  /**
+   * Group events by location and date
+   * @param {Array} events - Array of event data
+   * @returns {Map} Map of grouped events by location and date
+   */
+  groupEventsByLocationAndDate(events) {
+    const groupedEvents = new Map();
+
+    events.forEach(event => {
+      const key = `${event.lat},${event.lon},${event.date}`;
+      if (!groupedEvents.has(key)) {
+        groupedEvents.set(key, []);
+      }
+      groupedEvents.get(key).push(event);
+    });
+
+    return groupedEvents;
+  }
+
+  /**
+   * Add markers for grouped events
+   * @param {Array} events - Array of event data
+   * @param {Function} onShare - Share callback
+   */
+  addMarkersForGroupedEvents(events, onShare) {
+    const groupedEvents = this.groupEventsByLocationAndDate(events);
+
+    groupedEvents.forEach((eventsAtLocation, key) => {
+      if (eventsAtLocation.length === 1) {
+        this.addMarker(eventsAtLocation[0], onShare);
+      } else {
+        this._addGroupedMarker(eventsAtLocation, onShare);
+      }
+    });
+  }
+
+  /**
+   * Add marker for grouped events
+   * @param {Array} events - Array of event data
+   * @param {Function} onShare - Share callback
+   */
+  _addGroupedMarker(events, onShare) {
+    const currentTheme = getTheme();
+    let markerOptions = {};
+
+    if (currentTheme === 'test') {
+      const img = document.createElement('img');
+      img.src = 'assets/metka.png';
+      img.style.width = '24px';
+      img.style.height = 'auto';
+      markerOptions.element = img;
+      markerOptions.anchor = 'bottom';
+    } else {
+      markerOptions.color = '#22d3ee';
+    }
+
+    const marker = new maplibregl.Marker(markerOptions)
+      .setLngLat([events[0].lon, events[0].lat])
+      .addTo(this.map);
+
+    // Create mini-markers for each event
+    const miniMarkers = events.map((event, index) => {
+      const miniCard = document.createElement('div');
+      miniCard.innerHTML = this._createMiniCardContent(event, onShare);
+      miniCard.style.pointerEvents = 'auto';
+
+      const miniMarker = new maplibregl.Marker({
+        element: miniCard,
+        anchor: 'bottom',
+        offset: [0, -index * 70 - 80] // Position above the main marker
+      })
+        .setLngLat([event.lon, event.lat]);
+
+      // Add click handler for mini-card
+      miniCard.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._showFullEventPopup(event, miniCard);
+        // Hide mini-markers after showing full popup
+        this._hideAllMiniMarkers();
+      });
+
+      return miniMarker;
+    });
+
+    // Store mini-markers reference
+    marker._miniMarkers = miniMarkers;
+
+    // Add click handler to zoom and center on marker using DOM element
+    const markerElement = marker.getElement();
+    markerElement.addEventListener('click', (e) => {
+      console.log('Grouped marker clicked, flying to:', events[0].lon, events[0].lat);
+      // Prevent default MapLibre behavior
+      e.stopPropagation();
+      // Close any open popups first
+      this.closeAllPopups();
+      // Hide any other mini-markers
+      this._hideAllMiniMarkers();
+      // Fly to location
+      this.flyTo(events[0].lon, events[0].lat, 14);
+      // Show mini-markers after flyTo animation
+      setTimeout(() => {
+        miniMarkers.forEach(miniMarker => miniMarker.addTo(this.map));
+      }, 300);
+    });
+
+    this.markers.push(marker);
+    events.forEach(event => {
+      this.markerById.set(event.id, marker);
+      this.eventById.set(event.id, event);
+    });
+  }
+
+
+
+  /**
+   * Create mini card HTML content
+   * @param {Object} event - Event data
+   * @param {Function} onShare - Share callback
+   * @returns {string} HTML content
+   * @private
+   */
+  _createMiniCardContent(event, onShare) {
+    const header = `
+      <div class="grouped-event-header">
+        <strong>${sanitizeHtml(event.title)}</strong>
+        <div class="grouped-event-time">${sanitizeHtml(event.time || '')}</div>
+      </div>
+    `;
+
+    return `
+      <div class="grouped-event-item" data-event-id="${event.id}" style="pointer-events: auto; cursor: pointer;">
+        ${header}
+      </div>
+    `;
+  }
+
+  /**
+   * Hide all mini-markers
+   * @private
+   */
+  _hideAllMiniMarkers() {
+    this.markers.forEach(marker => {
+      if (marker._miniMarkers) {
+        marker._miniMarkers.forEach(miniMarker => miniMarker.remove());
+      }
+    });
+  }
+
+  /**
+   * Show full event popup
+   * @param {Object} event - Event data
+   * @param {HTMLElement} popupEl - Popup element
+   * @private
+   */
+  _showFullEventPopup(event, popupEl) {
+    // Close any existing popups and mini-markers before opening new one
+    this.closeAllPopups();
+
+    const fullPopup = new maplibregl.Popup({
+      offset: 120,
+      closeButton: false,
+      className: 'animated-popup'
+    })
+      .setHTML(this._createPopupContent(event, this.onShareCallback))
+      .setLngLat([event.lon, event.lat])
+      .addTo(this.map);
+
+    // Track the popup
+    this.currentPopups.add(fullPopup);
+
+    fullPopup.on('open', () => {
+      this._setupPopupHandlers(fullPopup, event);
+    });
+
+    fullPopup.on('close', () => {
+      this.currentPopups.delete(fullPopup);
+    });
+
+    // For grouped events, no need to reopen mini-markers after closing full popup
   }
 
   /**
@@ -541,9 +735,18 @@ class MapManager {
    * @param {string} eventId - Event ID
    */
   openPopup(eventId) {
+    const event = this.eventById.get(eventId);
+    if (!event) return;
+
+    // Close any existing popups before opening new one
+    this.closeAllPopups();
+
     const marker = this.markerById.get(eventId);
-    if (marker) {
+    if (marker && marker.getPopup()) {
       marker.togglePopup();
+    } else {
+      // For grouped events, open full popup directly
+      this._showFullEventPopup(event);
     }
   }
 

@@ -284,9 +284,8 @@ function handleDateChange(dateStr) {
     copyShareLink(eventId);
   };
 
-  eventsForDate.forEach(event => {
-    mapManager.addMarker(event, mapManager.onShareCallback);
-  });
+  // Use grouped markers logic
+  mapManager.addMarkersForGroupedEvents(eventsForDate, mapManager.onShareCallback);
 
   // Highlight first event in list
   eventListManager.highlightEvent(null); // Clear highlights
