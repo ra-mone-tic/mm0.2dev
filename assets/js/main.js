@@ -137,6 +137,32 @@ async function loadEvents() {
     // Render initial map view with today's events
     handleDateChange(DEVICE_TODAY);
 
+    // Handle URL parameters (shared event links)
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetId = urlParams.get('event');
+    if (targetId) {
+      const targetEvent = appState.allEvents.find(event => event.id === targetId);
+      if (targetEvent) {
+        // Ensure correct list view for the event
+        eventListManager.ensureListForEvent(targetEvent);
+
+        // Highlight in list
+        eventListManager.highlightEvent(targetEvent.id);
+
+        // Show markers for the event's date
+        handleDateChange(targetEvent.date);
+
+        // Center map and open popup
+        mapManager.flyTo(targetEvent.lon, targetEvent.lat);
+        mapManager.openPopup(targetEvent.id);
+
+        // Close sidebar on mobile
+        if (window.innerWidth < 768) {
+          eventListManager.closeSidebar();
+        }
+      }
+    }
+
   } catch (error) {
     console.error('Failed to load events:', error);
     // Show error in UI
