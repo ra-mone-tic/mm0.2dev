@@ -447,11 +447,14 @@ class MapManager {
       const miniCard = document.createElement('div');
       miniCard.innerHTML = this._createMiniCardContent(event, onShare);
       miniCard.style.pointerEvents = 'auto';
+      miniCard.style.opacity = '0';
+      miniCard.style.transform = 'translateY(10px) scale(0.95)';
+      miniCard.style.transition = `opacity 0.3s ease-out ${index * 0.05}s, transform 0.3s ease-out ${index * 0.05}s`;
 
       const miniMarker = new maplibregl.Marker({
         element: miniCard,
         anchor: 'bottom',
-        offset: [0, -index * 70 - 80] // Position above the main marker
+        offset: [0, -index * 45 - 35] // Tighter spacing: 35px base, 45px between cards
       })
         .setLngLat([event.lon, event.lat]);
 
@@ -483,7 +486,17 @@ class MapManager {
       this.flyTo(events[0].lon, events[0].lat, 14);
       // Show mini-markers after flyTo animation
       setTimeout(() => {
-        miniMarkers.forEach(miniMarker => miniMarker.addTo(this.map));
+        miniMarkers.forEach((miniMarker, index) => {
+          miniMarker.addTo(this.map);
+          // Trigger animation after adding to map
+          setTimeout(() => {
+            const element = miniMarker.getElement();
+            if (element) {
+              element.style.opacity = '1';
+              element.style.transform = 'translateY(0) scale(1)';
+            }
+          }, 50);
+        });
       }, 300);
     });
 
@@ -525,7 +538,9 @@ class MapManager {
   _hideAllMiniMarkers() {
     this.markers.forEach(marker => {
       if (marker._miniMarkers) {
-        marker._miniMarkers.forEach(miniMarker => miniMarker.remove());
+        marker._miniMarkers.forEach(miniMarker => {
+          miniMarker.remove();
+        });
       }
     });
   }

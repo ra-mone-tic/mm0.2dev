@@ -338,42 +338,103 @@ html[data-theme="amoled"] input[type="date"]{
 .grouped-event-item {
   background: var(--surface-1);
   border: var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
   cursor: pointer;
-  transition: background var(--fx-fast);
+  transition: all var(--fx-fast);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 10;
+  min-width: 220px;
+  max-width: 280px;
+  will-change: transform;
 }
 
 .grouped-event-item:hover {
   background: var(--surface-2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.grouped-event-item:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
 }
 
 .grouped-event-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
+  gap: 8px;
 }
 
 .grouped-event-header strong {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-0);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 180px;
+  line-height: 1.3;
+  flex: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .grouped-event-time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-1);
-  margin-left: 8px;
   white-space: nowrap;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+/* Enhanced visual hierarchy for stacked cards */
+.grouped-event-item:nth-child(1) {
+  z-index: 13;
+}
+
+.grouped-event-item:nth-child(2) {
+  z-index: 12;
+  margin-top: -4px;
+}
+
+.grouped-event-item:nth-child(3) {
+  z-index: 11;
+  margin-top: -8px;
+}
+
+.grouped-event-item:nth-child(4) {
+  z-index: 10;
+  margin-top: -12px;
+}
+
+.grouped-event-item:nth-child(5) {
+  z-index: 9;
+  margin-top: -16px;
+}
+
+/* Subtle animation for card entrance */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Ensure proper stacking context */
+.maplibregl-marker {
+  z-index: 100 !important;
+}
+
+.maplibregl-marker .grouped-event-item {
+  will-change: transform, opacity;
 }
 
 /* 4) Scrollbar (webkit) */
