@@ -288,6 +288,9 @@ class EventListManager {
     // Helper to get ymd string for event
     const getEventYmd = (dateStr) => getLocalDateString(parseDateForSorting(dateStr));
 
+    // Find nearest date for each day of week
+    const nearestDatesByDayOfWeek = this._getNearestDatesByDayOfWeek(events);
+
     // Filter today's events (including recently ended)
     const todayEvents = events.filter(event => getEventYmd(event.date) === todayYmd).filter(event => {
       const timeInfo = event.text ? this._extractTimeFromText(event.text) : null;
@@ -303,7 +306,6 @@ class EventListManager {
     });
 
     const tomorrowEvents = events.filter(event => getEventYmd(event.date) === tomorrowYmd);
-    const otherEvents = events.filter(event => getEventYmd(event.date) !== todayYmd && getEventYmd(event.date) !== tomorrowYmd);
 
     // Today's events
     if (todayEvents.length > 0) {
@@ -324,23 +326,54 @@ class EventListManager {
       });
     }
 
-    // Other events grouped by day
-    if (otherEvents.length > 0) {
-      const sortedEvents = otherEvents.sort((a, b) => parseDateForSorting(a.date) - parseDateForSorting(b.date));
-      let lastDayName = '';
+    // Other events grouped by nearest day of week
+    const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 
-      sortedEvents.forEach(event => {
-        const dayOfWeek = getDayOfWeekFromDate(event.date);
-        const dayName = getDayOfWeekName(dayOfWeek);
-
-        if (dayName !== lastDayName) {
+    dayNames.forEach(dayName => {
+      const nearestDate = nearestDatesByDayOfWeek[dayName];
+      if (nearestDate) {
+        const dayEvents = events.filter(event => getEventYmd(event.date) === nearestDate);
+        if (dayEvents.length > 0) {
           this.listContainer.appendChild(this._createSectionHeader(dayName));
-          lastDayName = dayName;
+          dayEvents.forEach(event => {
+            this.listContainer.appendChild(this._createEventItem(event));
+          });
         }
+      }
+    });
+  }
 
-        this.listContainer.appendChild(this._createEventItem(event));
-      });
-    }
+  /**
+   * Get nearest dates for each day of week
+   * @param {Array} events - Events array
+   * @returns {Object} Map of day names to nearest dates
+   * @private
+   */
+  _getNearestDatesByDayOfWeek(events) {
+    const today = new Date(DEVICE_TODAY + 'T00:00:00');
+    const nearestDates = {};
+
+    // Helper to get ymd string for event
+    const getEventYmd = (dateStr) => getLocalDateString(parseDateForSorting(dateStr));
+
+    events.forEach(event => {
+      const eventDate = new Date(getEventYmd(event.date) + 'T00:00:00');
+      const dayOfWeek = getDayOfWeekFromDate(event.date);
+      const dayName = getDayOfWeekName(dayOfWeek);
+
+      // Skip today and tomorrow as they are handled separately
+      if (getEventYmd(event.date) === DEVICE_TODAY) return;
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      if (getEventYmd(event.date) === getLocalDateString(tomorrow)) return;
+
+      // Check if this is the nearest date for this day of week
+      if (!nearestDates[dayName] || eventDate < new Date(nearestDates[dayName] + 'T00:00:00')) {
+        nearestDates[dayName] = getEventYmd(event.date);
+      }
+    });
+
+    return nearestDates;
   }
 
   /**
