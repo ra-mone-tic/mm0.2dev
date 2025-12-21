@@ -376,6 +376,31 @@ export function generateTransliterations(text) {
 
   if (/[a-z]/i.test(text)) {
     results.add(transliterateToRussian(text));
+
+    // For longer queries, also add partial transliterations
+    if (text.length >= 4) {
+      // Add transliteration of first few characters (for partial matches)
+      const partialLength = Math.min(4, text.length);
+      const partial = text.substring(0, partialLength);
+      results.add(transliterateToRussian(partial));
+
+      // Add transliteration of last few characters
+      if (text.length > 4) {
+        const lastPartial = text.substring(text.length - 4);
+        results.add(transliterateToRussian(lastPartial));
+      }
+    }
+  }
+
+  // For Russian queries, also try removing soft signs and common variations
+  if (/[а-яё]/i.test(text)) {
+    // Remove soft signs (ь) as they might not be present in search
+    results.add(text.replace(/[ьъ]/gi, ''));
+
+    // For longer words, add versions without soft signs
+    if (text.length > 3) {
+      results.add(text.replace(/[ьъ]/gi, ''));
+    }
   }
 
   return results;
@@ -408,22 +433,37 @@ export function transliterateToEnglish(text) {
  * @returns {string} Russian transliteration
  */
 export function transliterateToRussian(text) {
-  const translitMap = {
-    'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'yo': 'ё', 'zh': 'ж',
-    'z': 'з', 'i': 'и', 'y': 'й', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о',
-    'p': 'п', 'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'kh': 'х', 'ц': 'ts',
-    'ch': 'ч', 'sh': 'ш', 'sch': 'щ', '': 'ъ', 'y': 'ы', '': 'ь', 'e': 'э', 'yu': 'ю',
-    'ya': 'я', 'ye': 'е', 'yi': 'й', 'h': 'х', 'c': 'к', 'w': 'в', 'q': 'к',
-    'A': 'А', 'B': 'Б', 'V': 'В', 'G': 'Г', 'D': 'Д', 'E': 'Е', 'Yo': 'Ё', 'Zh': 'Ж',
-    'Z': 'З', 'I': 'И', 'Y': 'Й', 'K': 'К', 'Л': 'Л', 'М': 'М', 'N': 'Н', 'O': 'О',
-    'P': 'П', 'R': 'Р', 'S': 'С', 'T': 'Т', 'У': 'У', 'F': 'Ф', 'Kh': 'Х', 'Ts': 'Ц',
-    'Ch': 'Ч', 'Sh': 'Ш', 'Sch': 'Щ', '': 'Ъ', 'Y': 'Ы', '': 'Ь', 'E': 'Э', 'Yu': 'Ю',
-    'Ya': 'Я', 'Ye': 'Е', 'Yi': 'Й', 'H': 'Х', 'C': 'К', 'W': 'В', 'Q': 'К'
+  // Handle multi-character combinations first (longest to shortest)
+  const multiCharMap = {
+    'yo': 'ё', 'zh': 'ж', 'kh': 'х', 'ts': 'ц', 'ch': 'ч', 'sh': 'ш', 'sch': 'щ',
+    'yu': 'ю', 'ya': 'я', 'ye': 'е', 'yi': 'й',
+    'YO': 'Ё', 'ZH': 'Ж', 'KH': 'Х', 'TS': 'Ц', 'CH': 'Ч', 'SH': 'Ш', 'SCH': 'Щ',
+    'YU': 'Ю', 'YA': 'Я', 'YE': 'Е', 'YI': 'Й'
   };
 
-  return text.replace(/yo|zh|kh|ts|ch|sh|sch|y|ye|yi|a|b|v|g|d|e|f|h|i|k|l|m|n|o|p|r|s|t|u|w|q|y|z/gi, match => {
-    return translitMap[match.toLowerCase()] || match;
-  });
+  let result = text;
+
+  // Replace multi-character combinations first
+  for (const [eng, rus] of Object.entries(multiCharMap)) {
+    result = result.split(eng).join(rus);
+  }
+
+  // Then replace single characters
+  const singleCharMap = {
+    'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'z': 'з', 'i': 'и',
+    'y': 'й', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 'r': 'р',
+    's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'к', 'w': 'в', 'q': 'к',
+    'A': 'А', 'B': 'Б', 'V': 'В', 'G': 'Г', 'D': 'Д', 'E': 'Е', 'Z': 'З', 'I': 'И',
+    'Y': 'Й', 'K': 'К', 'L': 'Л', 'M': 'М', 'N': 'Н', 'O': 'О', 'P': 'П', 'R': 'Р',
+    'S': 'С', 'T': 'Т', 'U': 'У', 'F': 'Ф', 'H': 'Х', 'C': 'К', 'W': 'В', 'Q': 'К'
+  };
+
+  // Replace single characters
+  for (const [eng, rus] of Object.entries(singleCharMap)) {
+    result = result.split(eng).join(rus);
+  }
+
+  return result;
 }
 
 /**

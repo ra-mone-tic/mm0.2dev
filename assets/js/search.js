@@ -252,7 +252,7 @@ class SearchManager {
       }
     } else {
       // Search with transliteration
-      const searchVariants = Array.from(generateTransliterations(query));
+      const searchVariants = Array.from(generateTransliterations(normalizedQuery));
 
       matches = this.allEvents.filter(event => {
         const eventText = `${event.title} ${event.location}`.toLowerCase();
