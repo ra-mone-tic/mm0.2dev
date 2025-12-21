@@ -288,9 +288,6 @@ class EventListManager {
     // Helper to get ymd string for event
     const getEventYmd = (dateStr) => getLocalDateString(parseDateForSorting(dateStr));
 
-    // Find nearest date for each day of week
-    const nearestDatesByDayOfWeek = this._getNearestDatesByDayOfWeek(events);
-
     // Filter today's events (including recently ended)
     const todayEvents = events.filter(event => getEventYmd(event.date) === todayYmd).filter(event => {
       const timeInfo = event.text ? this._extractTimeFromText(event.text) : null;
@@ -326,54 +323,66 @@ class EventListManager {
       });
     }
 
-    // Other events grouped by nearest day of week
-    const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+    // Other events grouped by date in chronological order
+    const groupedEvents = this._getEventsGroupedByDate(events);
 
-    dayNames.forEach(dayName => {
-      const nearestDate = nearestDatesByDayOfWeek[dayName];
-      if (nearestDate) {
-        const dayEvents = events.filter(event => getEventYmd(event.date) === nearestDate);
-        if (dayEvents.length > 0) {
-          this.listContainer.appendChild(this._createSectionHeader(dayName));
-          dayEvents.forEach(event => {
-            this.listContainer.appendChild(this._createEventItem(event));
-          });
-        }
-      }
+    groupedEvents.forEach(group => {
+      const dateObj = new Date(group.date + 'T00:00:00');
+      const dayOfWeek = dateObj.getDay();
+      const dayName = getDayOfWeekName(dayOfWeek);
+
+      this.listContainer.appendChild(this._createSectionHeader(dayName));
+      group.events.forEach(event => {
+        this.listContainer.appendChild(this._createEventItem(event));
+      });
     });
   }
 
   /**
-   * Get nearest dates for each day of week
+   * Get events grouped by date in chronological order
    * @param {Array} events - Events array
-   * @returns {Object} Map of day names to nearest dates
+   * @returns {Array} Array of objects with date and events
    * @private
    */
-  _getNearestDatesByDayOfWeek(events) {
+  _getEventsGroupedByDate(events) {
     const today = new Date(DEVICE_TODAY + 'T00:00:00');
-    const nearestDates = {};
-
-    // Helper to get ymd string for event
     const getEventYmd = (dateStr) => getLocalDateString(parseDateForSorting(dateStr));
 
-    events.forEach(event => {
-      const eventDate = new Date(getEventYmd(event.date) + 'T00:00:00');
-      const dayOfWeek = getDayOfWeekFromDate(event.date);
-      const dayName = getDayOfWeekName(dayOfWeek);
+    // Filter out today and tomorrow as they are handled separately
+    const todayYmd = DEVICE_TODAY;
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowYmd = getLocalDateString(tomorrow);
 
-      // Skip today and tomorrow as they are handled separately
-      if (getEventYmd(event.date) === DEVICE_TODAY) return;
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      if (getEventYmd(event.date) === getLocalDateString(tomorrow)) return;
+    const filteredEvents = events.filter(event => {
+      const eventYmd = getEventYmd(event.date);
+      return eventYmd !== todayYmd && eventYmd !== tomorrowYmd;
+    });
 
-      // Check if this is the nearest date for this day of week
-      if (!nearestDates[dayName] || eventDate < new Date(nearestDates[dayName] + 'T00:00:00')) {
-        nearestDates[dayName] = getEventYmd(event.date);
+    // Sort events by date
+    filteredEvents.sort((a, b) => {
+      const dateA = parseDateForSorting(a.date);
+      const dateB = parseDateForSorting(b.date);
+      return dateA - dateB;
+    });
+
+    // Group events by date
+    const groupedEvents = [];
+    filteredEvents.forEach(event => {
+      const eventYmd = getEventYmd(event.date);
+      const existingGroup = groupedEvents.find(group => group.date === eventYmd);
+
+      if (existingGroup) {
+        existingGroup.events.push(event);
+      } else {
+        groupedEvents.push({
+          date: eventYmd,
+          events: [event]
+        });
       }
     });
 
-    return nearestDates;
+    return groupedEvents;
   }
 
   /**
