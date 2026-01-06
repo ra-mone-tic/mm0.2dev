@@ -360,6 +360,18 @@
     "lon": 20.496088462181
   },
   {
+    "date": "06.01",
+    "title": "X-MAS RAVE 2026",
+    "location": "Клуб Yalta, ул. Ялтинская 66",
+    "time": "20:00 - 02:00",
+    "tags": "Вечеринка, Рейв",
+    "short_description": "Новогодний рейв-трибьют легендарных групп в исполнении Yalta Band и Sancho.",
+    "full_description": "Новогодний рейв-трибьют легендарных групп:\r\nThe Prodigy\r\nFatboy Slim\r\nScooter\r\nGorillaz\r\nBritney Spears\r\nThe Chemical Brothers\r\nMoby\r\nв исполнении Yalta Band и Sancho",
+    "contacts": "https://vk.ru/xmas_rave26",
+    "lat": 54.7044005,
+    "lon": 20.5543155
+  },
+  {
     "date": "06.12",
     "title": "FRA ANGELIKO",
     "location": "Бар Суспирия, Коперника 21",
@@ -408,6 +420,30 @@
     "lon": 20.482217166797
   },
   {
+    "date": "07-08.01",
+    "title": "Голоса небесных тел Fest",
+    "location": "Бар Old School Bar, ул. Геологическая 1",
+    "time": "19:00 - 00:00",
+    "tags": "Вечеринка, Концерт, Творческий вечер",
+    "short_description": "Музыкально-поэтический винегрет в Old School Bar.",
+    "full_description": "Музыкально-поэтический винегрет в Old School Bar.",
+    "contacts": "https://t.me/OldSchool_Bar_HipHop/1051",
+    "lat": 54.714161779133,
+    "lon": 20.500955917174
+  },
+  {
+    "date": "07.01",
+    "title": "NY->KLD",
+    "location": "Бар Ельцин, ул. Гаражная 2",
+    "time": "20:00 - 00:00",
+    "tags": "Вечеринка",
+    "short_description": "Электронная вечеринка в баре Ельцын.",
+    "full_description": "Электронная вечеринка в баре Ельцын.\n\nЛайн-ап:\n20:00  DJ Active Phaze (smooth beats mix)\r\n21:00  DJ Active Phaze (original tracks set - emotional downtempo с элементами абстракции)\r\n21:50 - Secret Guest MC\r\n22:00 - DJ Konrad M (электроника и рок, Depeche Mood, Sleaford Mods, Faith No More и т.д.)",
+    "contacts": "https://t.me/yeltsin_pub/1978",
+    "lat": 54.7245261,
+    "lon": 20.5051884
+  },
+  {
     "date": "07.12",
     "title": "madk1d",
     "location": "Клуб Yalta, Ялтинская 66",
@@ -430,6 +466,18 @@
     "contacts": "https://www.afisha.ru/concert/lana-avior-tvorcheskiy-vecher-6019395/",
     "lat": 54.709613004098,
     "lon": 20.538108367723
+  },
+  {
+    "date": "08.01",
+    "title": "Хоровая медитация 2.0 – Святочные гадания",
+    "location": "Пространство HUMAN concept, ул. Генерал-лейтенанта Захарова 1",
+    "time": "18:30 - 22:00",
+    "tags": "Вечеринка, Творческий вечер",
+    "short_description": "«Практика совместного погружения в мир таинственного и неизведанного через фольклорную песню и коллективное гадание»",
+    "full_description": "«Практика совместного погружения в мир таинственного и неизведанного через фольклорную песню и коллективное гадание». Встреча подготовлена совместно с проектом НормХор.\r\n\r\nБудут много петь, гадать и говорить о разных русских приданиях.",
+    "contacts": "https://t.me/Rogatyuk_Vocalessons/238",
+    "lat": 54.734743710018,
+    "lon": 20.472201965969
   },
   {
     "date": "09.01",
