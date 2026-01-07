@@ -432,6 +432,18 @@
     "lon": 20.500955917174
   },
   {
+    "date": "07-09.01",
+    "title": "Pianissimo",
+    "location": "Филиал Третьяковской галереи в Калининграде, Парадная наб. 3",
+    "time": "20:00 - 22:00",
+    "tags": "Концерт, Фестиваль",
+    "short_description": "Зимний концертный сезон фортепианной музыки в стенах филиала Третьяковской галереи в Калининграде.",
+    "full_description": "Зимний концертный сезон фортепианной музыки в стенах филиала Третьяковской галереи в Калининграде.\r\n\r\n7 января выступит Альфредо ван де Мунт (Бельгия). В программе - Шуберт, Шопен, Лист.\r\n\r\n8 января - Абисал Гергиев (Россия). В программе - Бах, Бетховен, Малер, Мусоргский, Скрябин.\r\n\r\n9 января - Данил Ростовцев (Россия). В программе - Шостакович, Танеев, Мусоргский и др.",
+    "contacts": "https://kaliningrad.tretyakovgallery.ru/events/388/",
+    "lat": 53.1902778,
+    "lon": 50.0928844
+  },
+  {
     "date": "07.01",
     "title": "NY->KLD",
     "location": "Бар Ельцин, ул. Гаражная 2",
@@ -492,6 +504,18 @@
     "lon": 20.5064889
   },
   {
+    "date": "09.01",
+    "title": "другиЕноты",
+    "location": "Бар Dreadnought, ул. Генделя 5",
+    "time": "21:00 - 23:00",
+    "tags": "Концерт",
+    "short_description": "Группа, объединяющая русские хиты и зарубежные песни в захватывающие мешапы. Сплин, Звери, Кино и др. в авторской обработке под The Offspring, Linkin Park, Rammstein.",
+    "full_description": "Группа, объединяющая русские хиты и зарубежные песни в захватывающие мешапы. Сплин, Звери, Кино и др. в авторской обработке под The Offspring, Linkin Park, Rammstein.",
+    "contacts": "https://vk.ru/raccoons_39",
+    "lat": 54.7218613,
+    "lon": 20.495918
+  },
+  {
     "date": "1.1",
     "title": "New Year B•side",
     "location": "Клуб B•side, пр-т. Калинина 4",
@@ -514,6 +538,30 @@
     "contacts": "https://ticketscloud.com/v1/widgets/common?token=eyJhbGciOiJIUzI1NiIsImlzcyI6InRpY2tldHNjbG91ZC5ydSIsInR5cCI6IkpXVCJ9.eyJwIjoiNjg5MzU5YzBiNzZlNjQyMWQxNWUwNTcwIn0.U2rJSYJaEkbd7dsvDV73fD0B5BfCNdAehINsz7cisV4&lang=ru&utm_medium=socialloco&event=692d9f3d6fc6043558ddf04f&s=1&clckid=f696ba25&r=1&org=689359c0b76e6421d15e0570&city=554234&category=5f870d6cb07b2277a34f9084&tags=689fb0f3ef69cd72d464ab30%2C%D0%A1%D1%82%D0%B5%D0%BD%D0%B4%D0%B0%D0%BF",
     "lat": 54.7317348,
     "lon": 20.5308868
+  },
+  {
+    "date": "10.01",
+    "title": "Drum'N'Bass for MASS",
+    "location": "Клуб Склад (Warehouse Club), ул. Ялтинская 20П",
+    "time": "22:00 - 04:00",
+    "tags": "Вечеринка, Рейв",
+    "short_description": "Днб активисты перешли к более дерзким обращениям к народу.  «Громко, ярко, быстро и нескучно»\r\nДля выживших ко второй неделе каникул вход свободный.",
+    "full_description": "Днб активисты перешли к более дерзким обращениям к народу. Промо прилагаем.\r\n\r\nLine up:\r\nHUB\r\nV.KAN\r\nARTEM MILO ft. БуйРА\r\nMNTLCS\r\nFITILL\r\nALAN\r\n\r\n«Громко, ярко, быстро и нескучно»\r\nДля выживших ко второй неделе каникул вход свободный.",
+    "contacts": "https://vk.ru/dnb_fm",
+    "lat": 54.705610184328,
+    "lon": 20.544408541426
+  },
+  {
+    "date": "10.01",
+    "title": "Квартирник",
+    "location": "Бар Место силы, ул. Галицкого 18",
+    "time": "19:00 - 00:00",
+    "tags": "Вечеринка, Концерт",
+    "short_description": "Ламповый вечер в Месте силы. ",
+    "full_description": "Ламповый вечер в Месте силы. ",
+    "contacts": "https://t.me/mesto_sily_bar/1619",
+    "lat": 54.714207,
+    "lon": 20.4967406
   },
   {
     "date": "10.12.2025",
