@@ -208,19 +208,22 @@ export function getEventDateLabel(dateStr, eventText = null, showTimeAgo = false
     const year = mYmd[1].slice(-2); // last 2 digits of year
     formattedDate = `${day.toString().padStart(2, '0')}.${month.toString().padStart(2, '0')}.${year}`;
   } else {
-    // Try DD.MM format
-    const mDm = dateStr.match(/^(\d{1,2})\.(\d{1,2})$/);
-    if (mDm) {
-      // Rule: months Jan-Sep (0-8) assume next year, Oct-Dec (9-11) current year. Adjust annually as the year changes.
-      const month = parseInt(mDm[2]) - 1; // 0-based
-      let year = today.getFullYear() % 100;
-      if (month <= 8) { // Jan-Sep
-        year = (today.getFullYear() + 1) % 100;
-      }
-      formattedDate = `${parseInt(mDm[1]).toString().padStart(2, '0')}.${(month + 1).toString().padStart(2, '0')}.${year}`;
-    } else {
-      formattedDate = dateStr;
+  // Try DD.MM format
+  const mDm = dateStr.match(/^(\d{1,2})\.(\d{1,2})$/);
+  if (mDm) {
+    // Universal rule: dates without year are interpreted based on current month
+    const day = parseInt(mDm[1]);
+    let month = parseInt(mDm[2]) - 1; // 0-based
+    let year = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0-11
+
+    // If we're in the second half of the year (July-December),
+    // dates from January-June belong to next year
+    if (currentMonth >= 6 && month <= 5) { // July-December current year
+      year += 1; // Next year for January-June dates
     }
+    formattedDate = `${day.toString().padStart(2, '0')}.${(month + 1).toString().padStart(2, '0')}.${year.toString().slice(-2)}`;
+  }
   }
 
   let result = `<span style="font-weight: bold; font-style: italic;">${formattedDate}</span>`;
@@ -310,12 +313,16 @@ export function parseDateForSorting(dateStr) {
   // Extract first DD.MM from string
   const mDm = dateStr.match(/(\d{1,2})\.(\d{1,2})/);
   if (mDm) {
-    // Rule: months Jan-Sep (0-8) assume next year, Oct-Dec (9-11) current year. Adjust annually.
+    // Universal rule: dates without year are interpreted based on current month
     const day = parseInt(mDm[1]);
     let month = parseInt(mDm[2]) - 1; // 0-based
     let year = today.getFullYear();
-    if (month <= 8) { // Jan-Sep
-      year += 1;
+    const currentMonth = today.getMonth(); // 0-11
+
+    // If we're in the second half of the year (July-December),
+    // dates from January-June belong to next year
+    if (currentMonth >= 6 && month <= 5) { // July-December current year
+      year += 1; // Next year for January-June dates
     }
     const date = new Date(year, month, day);
     return date;
