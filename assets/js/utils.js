@@ -208,7 +208,19 @@ export function getEventDateLabel(dateStr, eventText = null, showTimeAgo = false
     const year = mYmd[1].slice(-2); // last 2 digits of year
     formattedDate = `${day.toString().padStart(2, '0')}.${month.toString().padStart(2, '0')}.${year}`;
   } else {
-  // Try DD.MM format
+  // Try DD.MM.YYYY or DD.MM.YY format (year specified explicitly)
+  const mDmY = dateStr.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+  if (mDmY) {
+    const day = parseInt(mDmY[1]);
+    const month = parseInt(mDmY[2]);
+    let year = parseInt(mDmY[3]);
+    // Handle YY format (assume 20XX for years 00-99)
+    if (year < 100) {
+      year += 2000;
+    }
+    formattedDate = `${day.toString().padStart(2, '0')}.${month.toString().padStart(2, '0')}.${year.toString().slice(-2)}`;
+  } else {
+  // Try DD.MM format (no year specified - use universal logic)
   const mDm = dateStr.match(/^(\d{1,2})\.(\d{1,2})$/);
   if (mDm) {
     // Universal rule: dates without year are interpreted based on current month
@@ -223,6 +235,7 @@ export function getEventDateLabel(dateStr, eventText = null, showTimeAgo = false
       year += 1; // Next year for January-June dates
     }
     formattedDate = `${day.toString().padStart(2, '0')}.${(month + 1).toString().padStart(2, '0')}.${year.toString().slice(-2)}`;
+  }
   }
   }
 
@@ -254,7 +267,7 @@ export function getDayOfWeekName(dayIndex) {
 
 /**
  * Get day of week from date string
- * Supports YYYY-MM-DD and DD.MM formats
+ * Supports YYYY-MM-DD and DD.MM formats with optional year
  * @param {string} dateStr - Date string
  * @returns {number} Day index (0 = Sunday, 1 = Monday, etc.)
  */
@@ -273,15 +286,33 @@ export function getDayOfWeekFromDate(dateStr) {
     return date.getDay();
   }
 
-  // Try DD.MM format
+  // Try DD.MM.YYYY or DD.MM.YY format (year specified explicitly)
+  const mDmY = dateStr.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+  if (mDmY) {
+    const day = parseInt(mDmY[1]);
+    const month = parseInt(mDmY[2]) - 1; // 0-based
+    let year = parseInt(mDmY[3]);
+    // Handle YY format (assume 20XX for years 00-99)
+    if (year < 100) {
+      year += 2000;
+    }
+    const date = new Date(year, month, day);
+    return date.getDay();
+  }
+
+  // Try DD.MM format (no year specified - use universal logic)
   const mDm = dateStr.match(/^(\d{1,2})\.(\d{1,2})$/);
   if (mDm) {
-    // Rule: months Jan-Sep (0-8) assume next year, Oct-Dec (9-11) current year. Adjust annually.
+    // Universal rule: dates without year are interpreted based on current month
     const day = parseInt(mDm[1]);
     let month = parseInt(mDm[2]) - 1; // 0-based
     let year = today.getFullYear();
-    if (month <= 8) { // Jan-Sep
-      year += 1;
+    const currentMonth = today.getMonth(); // 0-11
+
+    // If we're in the second half of the year (July-December),
+    // dates from January-June belong to next year
+    if (currentMonth >= 6 && month <= 5) { // July-December current year
+      year += 1; // Next year for January-June dates
     }
     const date = new Date(year, month, day);
     return date.getDay();
@@ -310,7 +341,20 @@ export function parseDateForSorting(dateStr) {
     return new Date(year, month, day);
   }
 
-  // Extract first DD.MM from string
+  // Try DD.MM.YYYY or DD.MM.YY format (year specified explicitly) - extract first match
+  const mDmY = dateStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+  if (mDmY) {
+    const day = parseInt(mDmY[1]);
+    const month = parseInt(mDmY[2]) - 1; // 0-based
+    let year = parseInt(mDmY[3]);
+    // Handle YY format (assume 20XX for years 00-99)
+    if (year < 100) {
+      year += 2000;
+    }
+    return new Date(year, month, day);
+  }
+
+  // Extract first DD.MM from string (no year specified - use universal logic)
   const mDm = dateStr.match(/(\d{1,2})\.(\d{1,2})/);
   if (mDm) {
     // Universal rule: dates without year are interpreted based on current month
