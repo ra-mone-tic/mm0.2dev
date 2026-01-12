@@ -84,7 +84,7 @@ async function loadEvents() {
     // Process events
     appState.allEvents = events.map(event => ({
       ...event,
-      id: event.id || makeEventId(event),
+      id: event.id, // Используем только id из events.json, не генерируем makeEventId
       dateLabel: getEventDateLabel(event.date, event.text)
     }));
 
@@ -184,7 +184,7 @@ function expandMultiDateEvents(events) {
     uniqueDates.forEach(singleDate => {
       const newEvent = { ...event };
       newEvent.date = singleDate;
-      newEvent.id = makeEventId(newEvent); // New ID since date differs
+      // id не генерируем, используем только из исходного события
       expanded.push(newEvent);
     });
   });
