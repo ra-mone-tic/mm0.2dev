@@ -4,7 +4,7 @@
 
 ## Демо
 
-https://ra-mone-tic.github.io/mm0.2/
+https://ra-mone-tic.github.io/mm0.2dev/
 
 ## Технологии
 
