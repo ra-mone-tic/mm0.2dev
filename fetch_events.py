@@ -222,12 +222,110 @@ def load_sheets_data(url: str) -> pd.DataFrame:
         logger.error(f"Не удалось загрузить данные из Google Sheets: {e}")
         sys.exit(1)
 
+def make_event_id(event):
+    """Генерировать уникальный ID события на основе его данных."""
+    source = f"{event['date']}|{event['title']}|{event.get('lat', '')}|{event.get('lon', '')}"
+    hash_val = 5381
+    for char in source:
+        hash_val = ((hash_val << 5) + hash_val) + ord(char)
+    return f"e{hash_val & 0x7FFFFFFF:08x}"
+
+def parse_event_dates(date_str):
+    """Парсить строку дат и вернуть список отдельных дат.
+
+    Поддерживает форматы:
+    - Одиночная дата: "15.01"
+    - Интервал: "15.01-20.01" или "15-20.01" -> ["15.01", "16.01", ..., "20.01"]
+    - Несколько дат: "15.01, 17.01, 19.01" -> ["15.01", "17.01", "19.01"]
+    - Смешанный: "15.01-17.01, 19.01" -> ["15.01", "16.01", "17.01", "19.01"]
+    """
+    if not date_str:
+        return []
+
+    # Разделить по запятым, точке с запятой и/или пробелам, но сохраняем части типа 15-20.01
+    parts = [p.strip() for p in re.split(r'[;,]+|(?<!\d)-(?!\d)|\s+', date_str) if p.strip()]
+
+    result = []
+
+    for part in parts:
+        # Проверить на интервал формата DD.MM-DD.MM
+        range_match = re.match(r'^(\d{1,2})\.(\d{2})-(\d{1,2})\.(\d{2})$', part)
+        if range_match:
+            start_day = int(range_match.group(1))
+            start_month = int(range_match.group(2))
+            end_day = int(range_match.group(3))
+            end_month = int(range_match.group(4))
+
+            if start_month != end_month:
+                logger.warning(f"Интервал через разные месяцы не поддерживается: {part}")
+                continue
+
+            for day in range(start_day, end_day + 1):
+                result.append(f"{day:02d}.{start_month:02d}")
+            continue
+
+        # Интервал вида DD-DD.MM (например "15-20.01")
+        range_match2 = re.match(r'^(\d{1,2})-(\d{1,2})\.(\d{2})$', part)
+        if range_match2:
+            start_day = int(range_match2.group(1))
+            end_day = int(range_match2.group(2))
+            month = int(range_match2.group(3))
+
+            for day in range(start_day, end_day + 1):
+                result.append(f"{day:02d}.{month:02d}")
+            continue
+
+        # Одиночная дата DD.MM
+        single_match = re.match(r'^(\d{1,2})\.(\d{2})$', part)
+        if single_match:
+            result.append(part)
+            continue
+
+        # Попробуем найти даты внутри строки (например, разделённые запятой)
+        sub_dates = re.findall(r'(\d{1,2}\.\d{2})', part)
+        if sub_dates:
+            result.extend(sub_dates)
+            continue
+
+        logger.warning(f"Неверный формат даты: {part}")
+
+    # Удалить дубликаты, сохранить порядок
+    seen = set()
+    unique = []
+    for d in result:
+        if d not in seen:
+            seen.add(d)
+            unique.append(d)
+
+    return unique
+
+
 def normalize_event_row(row):
-    """Нормализовать строку события из DataFrame."""
-    # All columns are pulled, position based mapping from CSV example: 0:empty, 1:date, 2:title, 3:location, 4:time, 5:tags, 6:short, 7:full, 8:contacts, 9:age
+    """Нормализовать строку события из DataFrame.
+
+    Ожидается, что колонка с id находится в индексе 11 (L). id должен быть целым числом.
+    """
     col_names = list(row.index)
 
     event = {}
+    # ID читаем из колонки L (индекс 11)
+    raw_id = ''
+    if len(col_names) > 11:
+        raw_val = row[col_names[11]]
+        if pd.notna(raw_val):
+            raw_id = str(raw_val).strip()
+            # Преобразовать числа вида 66.0 -> 66
+            m_num = re.match(r'^\s*(\d+)(?:\.0+)?\s*$', raw_id)
+            if m_num:
+                event['id'] = m_num.group(1)
+            else:
+                # Некорректный формат id — логируем и пропускаем строку
+                logger.warning(f"Некорректный id в строке: '{raw_id}' — id должен быть целым числом. Пропуск строки.")
+                return None
+        else:
+            event['id'] = ''
+
+    # Остальные поля
     if len(col_names) > 1:
         event['date'] = str(row[col_names[1]]) if pd.notna(row[col_names[1]]) else ''
     if len(col_names) > 2:
@@ -246,8 +344,11 @@ def normalize_event_row(row):
         event['contacts'] = str(row[col_names[8]]) if pd.notna(row[col_names[8]]) else ''
 
     # Проверка обязательных полей
+    if not event.get('id'):
+        logger.warning(f"Пропуск строки: отсутствует id для события (строка индекс неизвестен)")
+        return None
     if not event.get('date') or not event.get('title') or not event.get('location'):
-        logger.warning(f"Пропуск строки: отсутствуют обязательные поля: date='{event.get('date')}', title='{event.get('title')}', location='{event.get('location')}'")
+        logger.warning(f"Пропуск строки: отсутствуют обязательные поля: id='{event.get('id')}', date='{event.get('date')}', title='{event.get('title')}', location='{event.get('location')}'")
         return None
 
     # Нормализация адреса: удаление кавычек и лишних пробелов
@@ -259,7 +360,7 @@ def normalize_event_row(row):
         event['lat'] = lat
         event['lon'] = lon
     else:
-        logger.warning(f"Не удалось геокодировать: {event['location']}, пропуск события")
+        logger.warning(f"Не удалось геокодировать: {event['location']}, пропуск события id={event.get('id')}")
         return None
 
     return event
@@ -275,12 +376,17 @@ def main():
         original_cache = geocache.copy()
         geolog = {}
 
-        # Загрузить существующие события
+        # Загрузить существующие события по id
         existing_events_dict = {}
         if OUTPUT_JSON.exists():
             try:
                 existing_events = json.loads(OUTPUT_JSON.read_text(encoding='utf-8'))
-                existing_events_dict = {f"{e['date']}|{e['title']}|{e['location']}|{e.get('time', '')}": e for e in existing_events}
+                for event in existing_events:
+                    # Добавить id, если отсутствует (для совместимости со старым форматом)
+                    if 'id' not in event or not event['id']:
+                        event['id'] = make_event_id(event)
+                        logger.info(f"Добавлен id для существующего события: {event['id']}")
+                    existing_events_dict[event['id']] = event
                 logger.info(f"Загружено {len(existing_events_dict)} существующих событий")
             except Exception as e:
                 logger.warning(f"Не удалось загрузить существующие события: {e}")
@@ -288,26 +394,72 @@ def main():
         # Загрузить данные из Google Sheets
         df = load_sheets_data(GOOGLE_SHEETS_URL)
 
-        # Нормализовать и фильтровать события, обновлять существующие или добавлять новые
-        updated_count = 0
-        added_count = 0
+        # Обработать данные из таблицы: создать события на каждый день интервала
+        new_events_dict = {}
+        skipped_rows = 0
+        processed_rows = 0
+
         for idx, row in df.iterrows():
             if idx <= 2:  # Пропустить первые две строки (шаблон/пример)
                 continue
-            # Полная нормализация с geocoding
-            event = normalize_event_row(row)
-            if event:
-                event_key = f"{event['date']}|{event['title']}|{event['location']}|{event.get('time', '')}"
-                if event_key in existing_events_dict:
-                    existing_events_dict[event_key].update(event)
-                    logger.debug(f"Обновлено событие: {event['title']}")
-                    updated_count += 1
-                else:
-                    existing_events_dict[event_key] = event
-                    logger.info(f"Добавлено новое событие: {event['title']}")
-                    added_count += 1
 
-        logger.info(f"Обработано: {updated_count} обновлений, {added_count} добавлений")
+            # Нормализовать базовое событие
+            base_event = normalize_event_row(row)
+            if not base_event:
+                skipped_rows += 1
+                continue
+
+            # Парсить даты (интервалы и множественные даты)
+            dates = parse_event_dates(base_event['date'])
+            if not dates:
+                logger.warning(f"Не удалось распарсить даты для события {base_event['id']}: {base_event['date']}")
+                skipped_rows += 1
+                continue
+
+            # Создать событие на каждый день
+            for i, single_date in enumerate(dates, 1):
+                event = base_event.copy()
+                event['date'] = single_date
+
+                # Модифицировать id для множественных дат
+                if len(dates) == 1:
+                    event['id'] = base_event['id']
+                else:
+                    event['id'] = f"{base_event['id']}.{i}"
+
+                new_events_dict[event['id']] = event
+                logger.debug(f"Создано событие: id={event['id']}, date={event['date']}, title={event['title']}")
+
+            processed_rows += 1
+
+        logger.info(f"Обработано строк таблицы: {processed_rows}, пропущено: {skipped_rows}")
+
+        # Синхронизировать: обновить существующие, добавить новые, удалить отсутствующие
+        updated_count = 0
+        added_count = 0
+        deleted_count = 0
+
+        # Обновить и добавить
+        for event_id, event in new_events_dict.items():
+            if event_id in existing_events_dict:
+                # Обновить атрибуты
+                existing_events_dict[event_id].update(event)
+                logger.info(f"Обновлено событие: id={event_id}, title={event['title']}")
+                updated_count += 1
+            else:
+                # Добавить новое
+                existing_events_dict[event_id] = event
+                logger.info(f"Добавлено новое событие: id={event_id}, title={event['title']}")
+                added_count += 1
+
+        # Удалить события, которых нет в таблице
+        ids_to_delete = [eid for eid in existing_events_dict.keys() if eid not in new_events_dict]
+        for event_id in ids_to_delete:
+            del existing_events_dict[event_id]
+            logger.info(f"Удалено событие: id={event_id}")
+            deleted_count += 1
+
+        logger.info(f"Синхронизация завершена: обновлено {updated_count}, добавлено {added_count}, удалено {deleted_count}")
 
         if not existing_events_dict:
             logger.warning("События не найдены")
