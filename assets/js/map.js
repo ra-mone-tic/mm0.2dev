@@ -569,6 +569,8 @@ class MapManager {
 
     fullPopup.on('open', () => {
       this._setupPopupHandlers(fullPopup, event);
+      // Check and adjust popup position after opening
+      setTimeout(() => this._adjustPopupPosition(fullPopup.getElement(), fullPopup), 10);
     });
 
     fullPopup.on('close', () => {
@@ -634,6 +636,14 @@ class MapManager {
       const popupEl = popup.getElement();
       if (!popupEl) return;
 
+      // Reset popup to default position before checking
+      if (popup._originalOptions) {
+        popup.setOffset(popup._originalOptions.offset);
+        popup.options.anchor = popup._originalOptions.anchor;
+        // Force repositioning to default
+        setTimeout(() => popup._update(), 0);
+      }
+
       // Always reset to collapsed state on reopen
       const mainText = popupEl.querySelector('.popup-text');
       const expandedSection = popupEl.querySelector('.popup-text-expanded');
@@ -649,7 +659,7 @@ class MapManager {
           const btnText = expandBtn.textContent;
           if (btnText === 'Узнать больше') {
             // Expand popup
-            this._togglePopupText(popupEl);
+            this._togglePopupText(popupEl, popup);
             expandBtn.textContent = 'Контакты';
           } else if (btnText === 'Контакты') {
             // Open contacts link
@@ -660,6 +670,9 @@ class MapManager {
           }
         };
       }
+
+      // Check and adjust popup position after opening
+      setTimeout(() => this._adjustPopupPosition(popupEl, popup), 20);
     });
 
     popup.on('close', () => {
@@ -687,11 +700,12 @@ class MapManager {
   }
 
   /**
-   * Toggle popup text expansion
+   * Toggle popup text expansion with adaptive positioning
    * @param {HTMLElement} popupEl - Popup element
+   * @param {maplibregl.Popup} popup - Popup instance
    * @private
    */
-  _togglePopupText(popupEl) {
+  _togglePopupText(popupEl, popup) {
     const mainText = popupEl.querySelector('.popup-text');
     const expandedSection = popupEl.querySelector('.popup-text-expanded');
 
@@ -700,11 +714,122 @@ class MapManager {
     const isExpanded = expandedSection.style.display === 'block';
 
     if (isExpanded) {
+      // Collapsing - return to original position
       mainText.style.display = 'block';
       expandedSection.style.display = 'none';
+
+      // Reset to original position if it was changed
+      if (popup._originalOptions) {
+        popup.setOffset(popup._originalOptions.offset);
+        popup.options.anchor = popup._originalOptions.anchor;
+        // Force repositioning
+        setTimeout(() => popup._update(), 0);
+      }
     } else {
+      // Expanding - check if we need to reposition
       mainText.style.display = 'none';
       expandedSection.style.display = 'block';
+
+      // Check if repositioning is needed after expansion
+      setTimeout(() => this._adjustPopupPosition(popupEl, popup), 10);
+    }
+  }
+
+  /**
+   * Adjust popup position to avoid going behind top panel
+   * @param {HTMLElement} popupEl - Popup element
+   * @param {maplibregl.Popup} popup - Popup instance
+   * @private
+   */
+  _adjustPopupPosition(popupEl, popup) {
+    if (!popupEl || !popup) return;
+
+    const popupRect = popupEl.getBoundingClientRect();
+    const topPanelHeight = 93; // --popup-top-offset
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const popupHeight = popupRect.height;
+    const popupWidth = popupRect.width;
+
+    // Check if popup goes above top panel
+    if (popupRect.top < topPanelHeight) {
+      // Store original options
+      if (!popup._originalOptions) {
+        popup._originalOptions = {
+          offset: popup.options.offset,
+          anchor: popup.options.anchor
+        };
+      }
+
+      // Check if there's enough space below the marker
+      const spaceBelow = viewportHeight - popupRect.bottom;
+      if (popupHeight <= spaceBelow) {
+        // Position below the marker
+        const newAnchor = 'bottom';
+        const newOffset = [0, -10]; // Small gap from marker
+
+        popup.options.anchor = newAnchor;
+        popup.setOffset(newOffset);
+      } else {
+        // Not enough space below either - try centering or left/right positioning
+        const spaceAbove = popupRect.top;
+        const spaceLeft = popupRect.left;
+        const spaceRight = viewportWidth - popupRect.right;
+
+        if (spaceAbove >= popupHeight) {
+          // Enough space above, adjust offset to fit
+          const newOffset = [0, topPanelHeight - popupRect.top + 10];
+          popup.setOffset(newOffset);
+        } else if (spaceLeft >= popupWidth) {
+          // Try left positioning
+          const newAnchor = 'right';
+          const newOffset = [-10, 0];
+          popup.options.anchor = newAnchor;
+          popup.setOffset(newOffset);
+        } else if (spaceRight >= popupWidth) {
+          // Try right positioning
+          const newAnchor = 'left';
+          const newOffset = [10, 0];
+          popup.options.anchor = newAnchor;
+          popup.setOffset(newOffset);
+        } else {
+          // No good position, just ensure top is visible
+          const newOffset = [0, topPanelHeight - popupRect.top + 10];
+          popup.setOffset(newOffset);
+        }
+      }
+
+      // Force repositioning
+      setTimeout(() => popup._update(), 0);
+    } else if (popupRect.left < 0 || popupRect.right > viewportWidth) {
+      // Also check horizontal boundaries
+      if (!popup._originalOptions) {
+        popup._originalOptions = {
+          offset: popup.options.offset,
+          anchor: popup.options.anchor
+        };
+      }
+
+      // Adjust horizontal position if needed
+      const spaceLeft = popupRect.left;
+      const spaceRight = viewportWidth - popupRect.right;
+
+      if (popupRect.left < 0 && spaceRight >= popupWidth) {
+        // Move to right if left boundary violated and space available
+        const newAnchor = 'left';
+        const newOffset = [10, 0];
+        popup.options.anchor = newAnchor;
+        popup.setOffset(newOffset);
+      } else if (popupRect.right > viewportWidth && spaceLeft >= popupWidth) {
+        // Move to left if right boundary violated and space available
+        const newAnchor = 'right';
+        const newOffset = [-10, 0];
+        popup.options.anchor = newAnchor;
+        popup.setOffset(newOffset);
+      }
+
+      // Force repositioning
+      setTimeout(() => popup._update(), 0);
     }
   }
 
