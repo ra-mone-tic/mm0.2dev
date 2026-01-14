@@ -326,10 +326,10 @@ def normalize_event_row(row, row_index):
     col_names = list(row.index)
 
     event = {}
-    # ID читаем из неименованной колонки (индекс 0)
+    # ID читаем из столбца L (индекс 11)
     raw_id = ''
-    if len(col_names) > 0:
-        raw_val = row[col_names[0]]
+    if len(col_names) > 11:
+        raw_val = row[col_names[11]]
         if pd.notna(raw_val):
             raw_id = str(raw_val).strip()
             # Преобразовать числа вида 66.0 -> 66
@@ -352,9 +352,9 @@ def normalize_event_row(row, row_index):
             event['id'] = generate_stable_id(temp_date, temp_title, temp_location)
             logger.info(f"Отсутствует id, присвоен стабильный: {event['id']}")
     else:
-        # Нет колонок — генерируем стабильный ID (fallback)
+        # Нет столбца L — генерируем стабильный ID (fallback)
         event['id'] = generate_stable_id('', '', '')
-        logger.info(f"Нет колонок, присвоен fallback стабильный id: {event['id']}")
+        logger.info(f"Нет столбца L, присвоен fallback стабильный id: {event['id']}")
 
     # Остальные поля
     if len(col_names) > 1:
@@ -480,10 +480,10 @@ def main():
         # Сортировать все события по дате проведения
         temp_events.sort(key=lambda x: x['date'])
 
-        # Присвоить порядковые ID всем событиям по порядку сортировки
+        # Присвоить ID из _temp_id всем событиям
         new_events_dict = {}
-        for idx, event in enumerate(temp_events, 1):
-            event['id'] = str(idx)
+        for event in temp_events:
+            event['id'] = event['_temp_id']
 
             # Очистить временные поля
             del event['_sort_key']
