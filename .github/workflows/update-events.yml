@@ -2,13 +2,8 @@ name: Update Events
 
 on:
   schedule:
-    # Run every 2 hours
-    - cron: '2 * * * *'
-  push:
-    branches:
-      - main
-    paths:
-      - 'fetch_events.py'
+    # Run every 1 hour
+    - cron: '0 */1 * * *'
   workflow_dispatch:  # Allow manual runs
 
 permissions:
