@@ -161,19 +161,14 @@ def geocode_addr(addr: str) -> tuple:
 
     addr = addr.strip()
 
-    # Сначала проверить кэш
+    # Сначала проверить кэш (приоритет ручным правкам)
     if addr in geocache:
         cached_coords = geocache[addr]
         if cached_coords != [None, None]:
             lat, lon = cached_coords
-            # Проверить диапазон Калининграда (примерно 54-55 lat, 19-21 lon)
-            if 54 <= lat <= 55 and 19 <= lon <= 21:
-                logger.info(f"[CACHE    ] HIT | {addr} → {lat:.6f},{lon:.6f}")
-                return tuple(cached_coords)
-            else:
-                # Invalid coords, delete from cache and re-geocode
-                logger.warning(f"[CACHE    ] INVALID | {addr} → {lat:.6f},{lon:.6f}, удаляю и re-гекодинг")
-                del geocache[addr]
+            logger.info(f"[CACHE    ] HIT | {addr} → {lat:.6f},{lon:.6f}")
+            return tuple(cached_coords)
+        else:
             logger.info(f"[CACHE    ] HIT | {addr} → координаты не найдены")
 
     # Добавить город, если не указан
