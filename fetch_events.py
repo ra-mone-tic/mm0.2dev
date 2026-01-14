@@ -11,6 +11,7 @@ import time
 import re
 from pathlib import Path
 from io import StringIO
+from typing import Dict, List, Tuple, Optional, Any, Union
 
 # Опциональная загрузка .env для локальной разработки
 try:
@@ -108,7 +109,7 @@ geolog = {}
 geocache = {}
 original_cache = {}
 
-def log_geocoding(addr: str, provider: str, success: bool, detail: str = ""):
+def log_geocoding(addr: str, provider: str, success: bool, detail: str = "") -> None:
     """Расширенное логирование со структурными уровнями."""
     msg = f"[{provider:9}] {'OK ' if success else 'N/A'} | {addr}"
     if detail:
@@ -122,7 +123,7 @@ def log_geocoding(addr: str, provider: str, success: bool, detail: str = ""):
         geolog[addr] = {}
     geolog[addr][provider] = {"success": success, "detail": detail}
 
-def load_cache() -> dict:
+def load_cache() -> Dict[str, List[Optional[float]]]:
     """Загрузить кэш геокодинга из файла с обработкой ошибок."""
     if not CACHE_FILE.exists():
         logger.info("Файл кэша не найден, начинаем с чистого")
@@ -137,7 +138,7 @@ def load_cache() -> dict:
         logger.warning(f"Не удалось загрузить кэш: {e}, начинаем с чистого")
         return {}
 
-def save_cache(cache: dict, force: bool = False) -> None:
+def save_cache(cache: Dict[str, List[Optional[float]]], force: bool = False) -> None:
     """Сохранить кэш геокодинга на диск."""
     if cache == original_cache and not force:
         logger.info("Кэш не изменился, пропускаем сохранение")
@@ -150,7 +151,7 @@ def save_cache(cache: dict, force: bool = False) -> None:
     except IOError as e:
         logger.error(f"Не удалось сохранить кэш: {e}")
 
-def geocode_addr(addr: str) -> tuple:
+def geocode_addr(addr: str) -> Tuple[Optional[float], Optional[float]]:
     """Каскадный геокодинг с обработкой ошибок."""
     global geocache
     if not isinstance(geocache, dict):
@@ -217,7 +218,7 @@ def load_sheets_data(url: str) -> pd.DataFrame:
         logger.error(f"Не удалось загрузить данные из Google Sheets: {e}")
         sys.exit(1)
 
-def make_event_id(event):
+def make_event_id(event: Dict[str, Any]) -> str:
     """Генерировать уникальный ID события на основе его данных."""
     source = f"{event['date']}|{event['title']}|{event.get('lat', '')}|{event.get('lon', '')}"
     hash_val = 5381
@@ -225,7 +226,7 @@ def make_event_id(event):
         hash_val = ((hash_val << 5) + hash_val) + ord(char)
     return f"e{hash_val & 0x7FFFFFFF:08x}"
 
-def parse_event_dates(date_str):
+def parse_event_dates(date_str: Optional[str]) -> List[str]:
     """Парсить строку дат и вернуть список отдельных дат.
 
     Поддерживает форматы:
@@ -295,7 +296,7 @@ def parse_event_dates(date_str):
     return unique
 
 
-def generate_stable_id(date, title, location):
+def generate_stable_id(date: Any, title: Any, location: Any) -> str:
     """Генерировать стабильный ID на основе даты, названия и места."""
     # Очистить и нормализовать данные
     clean_date = str(date).strip() if date else ""
@@ -313,7 +314,7 @@ def generate_stable_id(date, title, location):
     # Возвращаем 8-значный hex ID
     return f"{hash_val & 0x7FFFFFFF:08x}"
 
-def normalize_event_row(row, row_index):
+def normalize_event_row(row: pd.Series, row_index: int) -> Optional[Dict[str, Any]]:
     """Нормализовать строку события из DataFrame.
 
     ID генерируется автоматически на основе содержания, если отсутствует или некорректный.

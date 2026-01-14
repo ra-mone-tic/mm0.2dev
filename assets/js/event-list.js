@@ -13,7 +13,8 @@ import {
   bindKeyboardActivation,
   sanitizeHtml,
   parseDateForSorting,
-  getLocalDateString
+  getLocalDateString,
+  extractTimeFromText
 } from './utils.js';
 import { mapManager } from './map.js';
 
@@ -177,54 +178,7 @@ class EventListManager {
     }
   }
 
-  /**
-   * Extract time from text (local helper)
-   * @param {string} text - Text to parse
-   * @returns {Object|null} Time info
-   * @private
-   */
-  _extractTimeFromText(text) {
-    if (!text) return null;
 
-    const timePatterns = [
-      /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/,
-      /(\d{1,2}):(\d{2})/
-    ];
-
-    for (const pattern of timePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        if (match.length === 5) {
-          const startHour = parseInt(match[1]);
-          const startMin = parseInt(match[2]);
-          const endHour = parseInt(match[3]);
-          const endMin = parseInt(match[4]);
-
-          if (startHour >= 0 && startHour <= 23 && startMin >= 0 && startMin <= 59 &&
-              endHour >= 0 && endHour <= 23 && endMin >= 0 && endMin <= 59) {
-            return {
-              start: `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`,
-              end: `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`,
-              hasEndTime: true
-            };
-          }
-        } else if (match.length === 3) {
-          const hour = parseInt(match[1]);
-          const min = parseInt(match[2]);
-
-          if (hour >= 0 && hour <= 23 && min >= 0 && min <= 59) {
-            return {
-              start: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
-              end: null,
-              hasEndTime: false
-            };
-          }
-        }
-      }
-    }
-
-    return null;
-  }
 
   /**
    * Update archive button label
@@ -458,6 +412,16 @@ class EventListManager {
         target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
     }
+  }
+
+  /**
+   * Extract time from text using utils function
+   * @param {string} text - Text to parse
+   * @returns {Object|null} Time info
+   * @private
+   */
+  _extractTimeFromText(text) {
+    return extractTimeFromText(text);
   }
 
   /**

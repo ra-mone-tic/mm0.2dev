@@ -16,61 +16,29 @@ from pathlib import Path
 # Добавляем корневую директорию в путь для импорта
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fetch_events import extract, load_cache, save_cache, geocode_addr
+from fetch_events import load_cache, save_cache, geocode_addr
 
 
-class TestExtractFunction:
-    """Тесты для функции извлечения данных события из текста поста."""
+class TestDateParsing:
+    """Тесты для функций парсинга дат."""
 
-    def test_extract_valid_event(self):
-        """Тест извлечения корректного события."""
-        text = "📍 ул. Ленина, 1, Калининград\n01.12 | Концерт группы ABC\nОписание концерта..."
-        result = extract(text)
+    def test_parse_event_dates_single_date(self):
+        """Тест парсинга одиночной даты."""
+        from fetch_events import parse_event_dates
+        result = parse_event_dates("15.01")
+        assert result == ["15.01"]
 
-        assert result is not None
-        assert result['title'] == "Концерт группы ABC"
-        assert result['date'] == "2025-12-01"  # Текущий год по умолчанию
-        assert "ул. Ленина, 1, Калининград" in result['location']
-        assert result['text'] == text
+    def test_parse_event_dates_range(self):
+        """Тест парсинга диапазона дат."""
+        from fetch_events import parse_event_dates
+        result = parse_event_dates("15-17.01")
+        assert result == ["15.01", "16.01", "17.01"]
 
-    def test_extract_without_location(self):
-        """Тест без указания места."""
-        text = "ДД.MM | Концерт без адреса"
-        result = extract(text)
-        assert result is None
-
-    def test_extract_without_date(self):
-        """Тест без указания даты."""
-        text = "📍 ул. Ленина, 1\nКонцерт без даты"
-        result = extract(text)
-        assert result is None
-
-    def test_extract_with_city_addition(self):
-        """Тест добавления города, если его нет."""
-        text = "📍 ул. Ленина, 1\n01.12 | Концерт в центре"
-        result = extract(text)
-
-        assert result is not None
-        assert "Калининград" in result['location']
-
-    def test_extract_different_date_formats(self):
-        """Тест различных форматов дат."""
-        test_cases = [
-            ("📍 адрес\n01.12 | Событие 1", "2025-12-01"),
-            ("📍 адрес\n15.03 | Событие 2", "2025-03-15"),
-            ("📍 адрес\n31.12 | Событие 3", "2025-12-31"),
-        ]
-
-        for text, expected_date in test_cases:
-            result = extract(text)
-            assert result is not None, f"Не удалось распарсить: {text}"
-            assert result['date'] == expected_date, f"Неверная дата для {text}"
-
-    def test_extract_title_cleaning(self):
-        """Тест очистки заголовка от лишних символов."""
-        text = "📍 адрес\n01.12 |   Концерт с пробелами   "
-        result = extract(text)
-        assert result['title'] == "Концерт с пробелами"
+    def test_parse_event_dates_multiple(self):
+        """Тест парсинга нескольких дат."""
+        from fetch_events import parse_event_dates
+        result = parse_event_dates("15.01, 17.01")
+        assert result == ["15.01", "17.01"]
 
 
 class TestCacheFunctions:
