@@ -308,10 +308,10 @@ def normalize_event_row(row):
     col_names = list(row.index)
 
     event = {}
-    # ID читаем из колонки L (индекс 11)
+    # ID читаем из неименованной колонки (индекс 0)
     raw_id = ''
-    if len(col_names) > 11:
-        raw_val = row[col_names[11]]
+    if len(col_names) > 0:
+        raw_val = row[col_names[0]]
         if pd.notna(raw_val):
             raw_id = str(raw_val).strip()
             # Преобразовать числа вида 66.0 -> 66
