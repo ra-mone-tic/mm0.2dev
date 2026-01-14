@@ -2,8 +2,8 @@ name: Update Events
 
 on:
   schedule:
-    # Run every hour
-    - cron: '0 * * * *'
+    # Run every 2 hours
+    - cron: '2 * * * *'
   push:
     branches:
       - main

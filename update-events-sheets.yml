@@ -2,7 +2,7 @@ name: Update events.json from Sheets
 
 on:
   schedule:
-    - cron: "0 */6 * * *"   # каждые 6 часов
+    - cron: "0 */2 * * *"   # каждые 2 часа
   workflow_dispatch: {}
 
 # Ограничение одновременных запусков
