@@ -300,10 +300,28 @@ def parse_event_dates(date_str):
     return unique
 
 
+def generate_stable_id(date, title, location):
+    """Генерировать стабильный ID на основе даты, названия и места."""
+    # Очистить и нормализовать данные
+    clean_date = str(date).strip() if date else ""
+    clean_title = str(title).strip() if title else ""
+    clean_location = str(location).strip() if location else ""
+
+    # Создать источник для хэширования
+    source = f"{clean_date}|{clean_title}|{clean_location}"
+
+    # Простой хэш-функция (DJB2)
+    hash_val = 5381
+    for char in source:
+        hash_val = ((hash_val << 5) + hash_val) + ord(char)
+
+    # Возвращаем 8-значный hex ID
+    return f"{hash_val & 0x7FFFFFFF:08x}"
+
 def normalize_event_row(row, row_index):
     """Нормализовать строку события из DataFrame.
 
-    ID генерируется автоматически по порядковому номеру, если отсутствует или некорректный.
+    ID генерируется автоматически на основе содержания, если отсутствует или некорректный.
     """
     col_names = list(row.index)
 
@@ -319,17 +337,24 @@ def normalize_event_row(row, row_index):
             if m_num:
                 event['id'] = m_num.group(1)
             else:
-                # Некорректный формат id — генерируем автоматически
-                event['id'] = str(row_index + 1)  # Порядковый номер начиная с 1
-                logger.info(f"Некорректный id '{raw_id}' заменен на авто-генерированный: {event['id']}")
+                # Некорректный формат id — генерируем стабильный ID
+                # Сначала получить базовые поля для генерации
+                temp_date = str(row[col_names[1]]) if len(col_names) > 1 and pd.notna(row[col_names[1]]) else ''
+                temp_title = str(row[col_names[2]]) if len(col_names) > 2 and pd.notna(row[col_names[2]]) else ''
+                temp_location = str(row[col_names[3]]) if len(col_names) > 3 and pd.notna(row[col_names[3]]) else ''
+                event['id'] = generate_stable_id(temp_date, temp_title, temp_location)
+                logger.info(f"Некорректный id '{raw_id}' заменен на стабильный: {event['id']}")
         else:
-            # Отсутствует id — генерируем автоматически
-            event['id'] = str(row_index + 1)
-            logger.info(f"Отсутствует id, присвоен авто-генерированный: {event['id']}")
+            # Отсутствует id — генерируем стабильный ID
+            temp_date = str(row[col_names[1]]) if len(col_names) > 1 and pd.notna(row[col_names[1]]) else ''
+            temp_title = str(row[col_names[2]]) if len(col_names) > 2 and pd.notna(row[col_names[2]]) else ''
+            temp_location = str(row[col_names[3]]) if len(col_names) > 3 and pd.notna(row[col_names[3]]) else ''
+            event['id'] = generate_stable_id(temp_date, temp_title, temp_location)
+            logger.info(f"Отсутствует id, присвоен стабильный: {event['id']}")
     else:
-        # Нет колонок — генерируем автоматически
-        event['id'] = str(row_index + 1)
-        logger.info(f"Нет колонок, присвоен авто-генерированный id: {event['id']}")
+        # Нет колонок — генерируем стабильный ID (fallback)
+        event['id'] = generate_stable_id('', '', '')
+        logger.info(f"Нет колонок, присвоен fallback стабильный id: {event['id']}")
 
     # Остальные поля
     if len(col_names) > 1:
@@ -401,7 +426,7 @@ def main():
         df = load_sheets_data(GOOGLE_SHEETS_URL)
 
         # Обработать данные из таблицы: создать события на каждый день интервала
-        new_events_dict = {}
+        temp_events = []
         skipped_rows = 0
         processed_rows = 0
 
@@ -426,17 +451,57 @@ def main():
             for i, single_date in enumerate(dates, 1):
                 event = base_event.copy()
                 event['date'] = single_date
+                event['_sort_key'] = f"{single_date}|{event['title']}|{event['location']}"  # Ключ для сортировки
 
-                # Модифицировать id для множественных дат
+                # Временно присвоить ID для множественных дат
                 if len(dates) == 1:
-                    event['id'] = base_event['id']
+                    event['_temp_id'] = base_event['id']
                 else:
-                    event['id'] = f"{base_event['id']}.{i}"
+                    event['_temp_id'] = f"{base_event['id']}.{i}"
 
-                new_events_dict[event['id']] = event
-                logger.debug(f"Создано событие: id={event['id']}, date={event['date']}, title={event['title']}")
+                temp_events.append(event)
+                logger.debug(f"Создано событие: temp_id={event['_temp_id']}, date={event['date']}, title={event['title']}")
 
             processed_rows += 1
+
+        # Сортировать все события по дате, названию и месту
+        temp_events.sort(key=lambda x: x['_sort_key'])
+
+        # Группировать события по базовому мероприятию (без учета дат)
+        event_groups = {}
+        for event in temp_events:
+            # Создать ключ группы: дата + название + место (без учета конкретной даты проведения)
+            base_key = f"{event['title']}|{event['location']}"
+            if base_key not in event_groups:
+                event_groups[base_key] = []
+            event_groups[base_key].append(event)
+
+        # Присвоить порядковые ID группам мероприятий
+        new_events_dict = {}
+        current_id = 1
+
+        for base_key, events_in_group in event_groups.items():
+            # Сортировать события в группе по дате проведения
+            events_in_group.sort(key=lambda x: x['date'])
+
+            for event in events_in_group:
+                if len(events_in_group) == 1:
+                    # Одно событие - просто порядковый номер
+                    event['id'] = str(current_id)
+                else:
+                    # Множественные даты - формат: base_id.sub_id
+                    base_id = str(current_id)
+                    sub_id = events_in_group.index(event) + 1
+                    event['id'] = f"{base_id}.{sub_id}"
+
+                # Очистить временные поля
+                del event['_sort_key']
+                del event['_temp_id']
+
+                new_events_dict[event['id']] = event
+                logger.info(f"Присвоен ID: {event['id']} для '{event['title']}' на {event['date']}")
+
+            current_id += 1
 
         logger.info(f"Обработано строк таблицы: {processed_rows}, пропущено: {skipped_rows}")
 
