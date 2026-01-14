@@ -300,10 +300,10 @@ def parse_event_dates(date_str):
     return unique
 
 
-def normalize_event_row(row):
+def normalize_event_row(row, row_index):
     """Нормализовать строку события из DataFrame.
 
-    Ожидается, что колонка с id находится в индексе 11 (L). id должен быть целым числом.
+    ID генерируется автоматически по порядковому номеру, если отсутствует или некорректный.
     """
     col_names = list(row.index)
 
@@ -319,11 +319,17 @@ def normalize_event_row(row):
             if m_num:
                 event['id'] = m_num.group(1)
             else:
-                # Некорректный формат id — логируем и пропускаем строку
-                logger.warning(f"Некорректный id в строке: '{raw_id}' — id должен быть целым числом. Пропуск строки.")
-                return None
+                # Некорректный формат id — генерируем автоматически
+                event['id'] = str(row_index + 1)  # Порядковый номер начиная с 1
+                logger.info(f"Некорректный id '{raw_id}' заменен на авто-генерированный: {event['id']}")
         else:
-            event['id'] = ''
+            # Отсутствует id — генерируем автоматически
+            event['id'] = str(row_index + 1)
+            logger.info(f"Отсутствует id, присвоен авто-генерированный: {event['id']}")
+    else:
+        # Нет колонок — генерируем автоматически
+        event['id'] = str(row_index + 1)
+        logger.info(f"Нет колонок, присвоен авто-генерированный id: {event['id']}")
 
     # Остальные поля
     if len(col_names) > 1:
@@ -403,8 +409,8 @@ def main():
             if idx <= 2:  # Пропустить первые две строки (шаблон/пример)
                 continue
 
-            # Нормализовать базовое событие
-            base_event = normalize_event_row(row)
+            # Нормализовать базовое событие (idx - 2 для учета пропущенных строк)
+            base_event = normalize_event_row(row, idx - 2)
             if not base_event:
                 skipped_rows += 1
                 continue

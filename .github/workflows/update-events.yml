@@ -2,8 +2,8 @@ name: Update Events
 
 on:
   schedule:
-    # Run every 1 hour
-    - cron: '0 */1 * * *'
+    # Run every 2 hours
+    - cron: '0 */2 * * *'
   workflow_dispatch:  # Allow manual runs
 
 permissions:
@@ -34,6 +34,14 @@ jobs:
         run: python fetch_events.py
         env:
           YANDEX_KEY: ${{ secrets.YANDEX_KEY }}
+
+      - name: Check logs
+        run: |
+          echo "=== Last 50 lines of fetch_events.log ==="
+          tail -50 fetch_events.log || echo "No log file found"
+          echo "=== events.json status ==="
+          ls -la events.json || echo "events.json not found"
+          wc -l events.json || echo "Cannot count lines"
 
       - name: Commit and push changes
         run: |
