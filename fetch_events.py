@@ -431,7 +431,20 @@ def main():
         processed_rows = 0
 
         for idx, row in df.iterrows():
-            if idx <= 2:  # Пропустить первые две строки (шаблон/пример)
+            # Автоматически определить начало данных: пропустить строки без даты и названия
+            col_names = list(row.index)
+            if len(col_names) >= 3:
+                date_val = str(row[col_names[1]]) if pd.notna(row[col_names[1]]) else ''
+                title_val = str(row[col_names[2]]) if pd.notna(row[col_names[2]]) else ''
+                location_val = str(row[col_names[3]]) if len(col_names) > 3 and pd.notna(row[col_names[3]]) else ''
+
+                # Пропустить строку если нет основных данных (дата, название, место)
+                if not date_val.strip() or not title_val.strip() or not location_val.strip():
+                    logger.debug(f"Пропущена строка {idx + 1}: отсутствуют основные данные")
+                    continue
+            else:
+                # Мало колонок - пропустить
+                logger.debug(f"Пропущена строка {idx + 1}: недостаточно колонок")
                 continue
 
             # Нормализовать базовое событие (idx - 2 для учета пропущенных строк)
@@ -464,44 +477,20 @@ def main():
 
             processed_rows += 1
 
-        # Сортировать все события по дате, названию и месту
-        temp_events.sort(key=lambda x: x['_sort_key'])
+        # Сортировать все события по дате проведения
+        temp_events.sort(key=lambda x: x['date'])
 
-        # Группировать события по базовому мероприятию (без учета дат)
-        event_groups = {}
-        for event in temp_events:
-            # Создать ключ группы: дата + название + место (без учета конкретной даты проведения)
-            base_key = f"{event['title']}|{event['location']}"
-            if base_key not in event_groups:
-                event_groups[base_key] = []
-            event_groups[base_key].append(event)
-
-        # Присвоить порядковые ID группам мероприятий
+        # Присвоить порядковые ID всем событиям по порядку сортировки
         new_events_dict = {}
-        current_id = 1
+        for idx, event in enumerate(temp_events, 1):
+            event['id'] = str(idx)
 
-        for base_key, events_in_group in event_groups.items():
-            # Сортировать события в группе по дате проведения
-            events_in_group.sort(key=lambda x: x['date'])
+            # Очистить временные поля
+            del event['_sort_key']
+            del event['_temp_id']
 
-            for event in events_in_group:
-                if len(events_in_group) == 1:
-                    # Одно событие - просто порядковый номер
-                    event['id'] = str(current_id)
-                else:
-                    # Множественные даты - формат: base_id.sub_id
-                    base_id = str(current_id)
-                    sub_id = events_in_group.index(event) + 1
-                    event['id'] = f"{base_id}.{sub_id}"
-
-                # Очистить временные поля
-                del event['_sort_key']
-                del event['_temp_id']
-
-                new_events_dict[event['id']] = event
-                logger.info(f"Присвоен ID: {event['id']} для '{event['title']}' на {event['date']}")
-
-            current_id += 1
+            new_events_dict[event['id']] = event
+            logger.info(f"Присвоен ID: {event['id']} для '{event['title']}' на {event['date']}")
 
         logger.info(f"Обработано строк таблицы: {processed_rows}, пропущено: {skipped_rows}")
 
