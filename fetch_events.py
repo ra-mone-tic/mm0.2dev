@@ -9,6 +9,7 @@ import json
 import sys
 import time
 import re
+import hashlib
 from pathlib import Path
 from io import StringIO
 from typing import Dict, List, Tuple, Optional, Any, Union
@@ -63,6 +64,7 @@ GEOCODE_SAVE_LOG = os.getenv("GEOCODE_SAVE_LOG", "1") == "1"
 OUTPUT_JSON = Path("events.json")
 CACHE_FILE = Path("geocode_cache.json")
 LOG_FILE = Path("geocode_log.json")
+SHEETS_CACHE_FILE = Path("sheets_cache.json")
 
 # ─────────── УТИЛИТЫ ───────────
 def init_session() -> requests.Session:
@@ -204,13 +206,37 @@ def geocode_addr(addr: str) -> Tuple[Optional[float], Optional[float]]:
     logger.warning(f"Все геокодеры не удались для: {addr}")
     return (None, None)
 
-def load_sheets_data(url: str) -> pd.DataFrame:
-    """Загрузить данные из Google Sheets в виде DataFrame."""
+def load_sheets_data(url: str) -> Optional[pd.DataFrame]:
+    """Загрузить данные из Google Sheets в виде DataFrame с кэшированием."""
     try:
         response = session.get(url, timeout=30)
         response.raise_for_status()
         # Декодировать с учетом возможной кодировки
         csv_content = response.content.decode('utf-8-sig')  # utf-8-sig for BOM
+
+        # Вычислить хэш контента
+        current_hash = hashlib.md5(csv_content.encode('utf-8')).hexdigest()
+
+        # Проверить кэш
+        sheets_cache = {}
+        if SHEETS_CACHE_FILE.exists():
+            try:
+                sheets_cache = json.loads(SHEETS_CACHE_FILE.read_text(encoding='utf-8'))
+            except Exception:
+                pass
+
+        if sheets_cache.get('hash') == current_hash:
+            logger.info("Данные Sheets не изменились, используем кэш")
+            return None
+
+        # Обновить кэш
+        sheets_cache['hash'] = current_hash
+        sheets_cache['timestamp'] = time.time()
+        try:
+            SHEETS_CACHE_FILE.write_text(json.dumps(sheets_cache, indent=2), encoding='utf-8')
+        except Exception as e:
+            logger.warning(f"Не удалось сохранить кэш Sheets: {e}")
+
         df = pd.read_csv(StringIO(csv_content))
         logger.info(f"Загружено {len(df)} строк из Google Sheets")
         return df
@@ -420,6 +446,11 @@ def main():
 
         # Загрузить данные из Google Sheets
         df = load_sheets_data(GOOGLE_SHEETS_URL)
+        if df is None:
+            logger.info("Данные Sheets не изменились, пропускаем обработку событий")
+            # Сохранить кэш если нужно
+            save_cache(geocache)
+            return
 
         # Обработать данные из таблицы: создать события на каждый день интервала
         temp_events = []
@@ -529,19 +560,22 @@ def main():
         # Сортировать по дате
         all_events.sort(key=lambda x: x['date'])
 
-        # Сохранить результат
-        logger.info(f"Начинаем сохранение {len(all_events)} событий в {OUTPUT_JSON}")
-        try:
-            json_str = json.dumps(all_events, ensure_ascii=False, indent=2)
-            logger.info(f"Сгенерирован JSON размером {len(json_str)} символов")
-            OUTPUT_JSON.write_text(json_str, encoding="utf-8")
-            logger.info(f"Успешно сохранено в {OUTPUT_JSON}. Файл существует: {OUTPUT_JSON.exists()}")
-            if OUTPUT_JSON.exists():
-                file_size = OUTPUT_JSON.stat().st_size if hasattr(OUTPUT_JSON, 'stat') else 0
-                logger.info(f"Размер файла: {file_size} байт")
-        except Exception as e:
-            logger.error(f"Не удалось сохранить в {OUTPUT_JSON}: {e}")
-            raise
+        # Сохранить результат только если были изменения
+        if updated_count > 0 or added_count > 0 or deleted_count > 0:
+            logger.info(f"Начинаем сохранение {len(all_events)} событий в {OUTPUT_JSON}")
+            try:
+                json_str = json.dumps(all_events, ensure_ascii=False, indent=2)
+                logger.info(f"Сгенерирован JSON размером {len(json_str)} символов")
+                OUTPUT_JSON.write_text(json_str, encoding="utf-8")
+                logger.info(f"Успешно сохранено в {OUTPUT_JSON}. Файл существует: {OUTPUT_JSON.exists()}")
+                if OUTPUT_JSON.exists():
+                    file_size = OUTPUT_JSON.stat().st_size if hasattr(OUTPUT_JSON, 'stat') else 0
+                    logger.info(f"Размер файла: {file_size} байт")
+            except Exception as e:
+                logger.error(f"Не удалось сохранить в {OUTPUT_JSON}: {e}")
+                raise
+        else:
+            logger.info("Изменений в событиях нет, пропускаем сохранение events.json")
 
         # Сохранить кэш
         save_cache(geocache)
