@@ -15,6 +15,7 @@ venv/
 ## Logs and local artifacts
 logs/
 geocode_log.json
+sheets_cache.json
 code_review.md
 elements_sizes.md
 
