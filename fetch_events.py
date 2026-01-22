@@ -414,7 +414,7 @@ def normalize_event_row(row: pd.Series, row_index: int) -> Optional[Dict[str, An
         event['lat'] = lat
         event['lon'] = lon
     else:
-        logger.warning(f"Не удалось геокодировать: {event['location']}, пропуск события id={event.get('id')}")
+        logger.warning(f"Не удалось геокодировать: {event['location']}, пропуск события base_id={event.get('_base_id', 'unknown')}")
         return None
 
     return event
@@ -484,7 +484,7 @@ def main():
             # Парсить даты (интервалы и множественные даты)
             dates = parse_event_dates(base_event['date'])
             if not dates:
-                logger.warning(f"Не удалось распарсить даты для события {base_event['id']}: {base_event['date']}")
+                logger.warning(f"Не удалось распарсить даты для события {base_event.get('id', base_event.get('_base_id', 'unknown'))}: {base_event['date']}")
                 skipped_rows += 1
                 continue
 
