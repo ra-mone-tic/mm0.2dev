@@ -42,6 +42,18 @@ jobs:
       - name: Run fetch script
         run: python fetch_events.py
 
+      - name: Commit and push if events changed
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add events.json geocode_cache.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-update events.json from Google Sheets"
+            git push
+          fi
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

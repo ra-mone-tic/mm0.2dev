@@ -343,40 +343,41 @@ def generate_stable_id(date: Any, title: Any, location: Any) -> str:
 def normalize_event_row(row: pd.Series, row_index: int) -> Optional[Dict[str, Any]]:
     """Нормализовать строку события из DataFrame.
 
-    ID генерируется автоматически на основе содержания, если отсутствует или некорректный.
+    ID генерируется по номеру в колонке A, с дробными для множественных дат.
     """
     col_names = list(row.index)
 
     event = {}
-    # ID читаем из столбца L (индекс 11)
-    raw_id = ''
-    if len(col_names) > 11:
-        raw_val = row[col_names[11]]
+    # ID читаем из столбца A (индекс 0) как base_id
+    base_id = ''
+    if len(col_names) > 0:
+        raw_val = row[col_names[0]]
         if pd.notna(raw_val):
             raw_id = str(raw_val).strip()
             # Преобразовать числа вида 66.0 -> 66
             m_num = re.match(r'^\s*(\d+)(?:\.0+)?\s*$', raw_id)
             if m_num:
-                event['id'] = m_num.group(1)
+                base_id = m_num.group(1)
             else:
-                # Некорректный формат id — генерируем стабильный ID
-                # Сначала получить базовые поля для генерации
+                # Некорректный формат — генерируем стабильный ID
                 temp_date = str(row[col_names[1]]) if len(col_names) > 1 and pd.notna(row[col_names[1]]) else ''
                 temp_title = str(row[col_names[2]]) if len(col_names) > 2 and pd.notna(row[col_names[2]]) else ''
                 temp_location = str(row[col_names[3]]) if len(col_names) > 3 and pd.notna(row[col_names[3]]) else ''
-                event['id'] = generate_stable_id(temp_date, temp_title, temp_location)
-                logger.info(f"Некорректный id '{raw_id}' заменен на стабильный: {event['id']}")
+                base_id = generate_stable_id(temp_date, temp_title, temp_location)
+                logger.info(f"Некорректный base_id '{raw_id}' заменен на стабильный: {base_id}")
         else:
-            # Отсутствует id — генерируем стабильный ID
+            # Отсутствует base_id — генерируем стабильный ID
             temp_date = str(row[col_names[1]]) if len(col_names) > 1 and pd.notna(row[col_names[1]]) else ''
             temp_title = str(row[col_names[2]]) if len(col_names) > 2 and pd.notna(row[col_names[2]]) else ''
             temp_location = str(row[col_names[3]]) if len(col_names) > 3 and pd.notna(row[col_names[3]]) else ''
-            event['id'] = generate_stable_id(temp_date, temp_title, temp_location)
-            logger.info(f"Отсутствует id, присвоен стабильный: {event['id']}")
+            base_id = generate_stable_id(temp_date, temp_title, temp_location)
+            logger.info(f"Отсутствует base_id, присвоен стабильный: {base_id}")
     else:
-        # Нет столбца L — генерируем стабильный ID (fallback)
-        event['id'] = generate_stable_id('', '', '')
-        logger.info(f"Нет столбца L, присвоен fallback стабильный id: {event['id']}")
+        # Нет столбца A — генерируем стабильный ID (fallback)
+        base_id = generate_stable_id('', '', '')
+        logger.info(f"Нет столбца A, присвоен fallback base_id: {base_id}")
+
+    event['_base_id'] = base_id
 
     # Остальные поля
     if len(col_names) > 1:
@@ -397,11 +398,11 @@ def normalize_event_row(row: pd.Series, row_index: int) -> Optional[Dict[str, An
         event['contacts'] = str(row[col_names[8]]) if pd.notna(row[col_names[8]]) else ''
 
     # Проверка обязательных полей
-    if not event.get('id'):
-        logger.warning(f"Пропуск строки: отсутствует id для события (строка индекс неизвестен)")
+    if not event.get('_base_id'):
+        logger.warning(f"Пропуск строки: отсутствует base_id для события (строка индекс неизвестен)")
         return None
     if not event.get('date') or not event.get('title') or not event.get('location'):
-        logger.warning(f"Пропуск строки: отсутствуют обязательные поля: id='{event.get('id')}', date='{event.get('date')}', title='{event.get('title')}', location='{event.get('location')}'")
+        logger.warning(f"Пропуск строки: отсутствуют обязательные поля: base_id='{event.get('_base_id')}', date='{event.get('date')}', title='{event.get('title')}', location='{event.get('location')}'")
         return None
 
     # Нормализация адреса: удаление кавычек и лишних пробелов
@@ -488,16 +489,17 @@ def main():
                 continue
 
             # Создать событие на каждый день
+            base_id = base_event['_base_id']
             for i, single_date in enumerate(dates, 1):
                 event = base_event.copy()
                 event['date'] = single_date
                 event['_sort_key'] = f"{single_date}|{event['title']}|{event['location']}"  # Ключ для сортировки
 
-                # Временно присвоить ID для множественных дат
+                # Временно присвоить ID: base_id из колонки A, дробные для множественных дат
                 if len(dates) == 1:
-                    event['_temp_id'] = base_event['id']
+                    event['_temp_id'] = base_id
                 else:
-                    event['_temp_id'] = f"{base_event['id']}.{i}"
+                    event['_temp_id'] = f"{base_id}.{i}"
 
                 temp_events.append(event)
                 logger.debug(f"Создано событие: temp_id={event['_temp_id']}, date={event['date']}, title={event['title']}")
