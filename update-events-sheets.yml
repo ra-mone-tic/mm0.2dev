@@ -1,0 +1,90 @@
+name: Update events.json from Sheets
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # каждые 6 часов
+  workflow_dispatch: {}
+
+# Ограничение одновременных запусков
+concurrency:
+  group: update-events-sheets
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"  # Можно переопределить в настройках репозитория
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate events.json
+        env:
+          YANDEX_KEY: ${{ secrets.YANDEX_KEY }}
+          NOMINATIM_USER_AGENT: "meowafisha-bot"
+          ARCGIS_MIN_DELAY: "1.0"
+          YANDEX_MIN_DELAY: "1.0"
+          NOMINATIM_MIN_DELAY: "1.0"
+          GEOCODE_SAVE_LOG: "1"
+        run: |
+          python fetch_events.py
+
+      - name: Проверить корректность JSON
+        run: |
+          echo "🔍 Проверяем events.json..."
+          python -c "
+          import json
+          import sys
+          try:
+              with open('events.json', 'r', encoding='utf-8') as f:
+                  data = json.load(f)
+              if not isinstance(data, list):
+                  print('❌ events.json должен содержать массив')
+                  sys.exit(1)
+              if not data:
+                  print('⚠️  events.json пустой')
+              else:
+                  print(f'✅ events.json корректный, содержит {len(data)} событий')
+                  # Проверить структуру первого события
+                  if data and isinstance(data[0], dict):
+                      required_fields = ['title', 'location', 'date']
+                      missing = [f for f in required_fields if f not in data[0]]
+                      if missing:
+                          print(f'⚠️  Отсутствуют поля: {missing}')
+                  # Посчитать события без координат
+                  events_without_coords = sum(1 for event in data if not (event.get('lat') and event.get('lon')))
+                  if events_without_coords > 0:
+                      print(f'⚠️  {events_without_coords} событий без координат из {len(data)}')
+                      if events_without_coords / len(data) > 0.1:  # >10% без координат
+                          print('🚨 Высокий процент событий без координат - проверьте геокодинг')
+          except json.JSONDecodeError as e:
+              print(f'❌ Неверный JSON: {e}')
+              sys.exit(1)
+          except Exception as e:
+              print(f'❌ Ошибка проверки: {e}')
+              sys.exit(1)
+          "
+
+      - name: Commit & push changes (if any)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add events.json geocode_cache.json  # добавить кэш
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update events.json & geocode cache from Sheets ($(date -u +"%Y-%m-%d %H:%M UTC"))"
+            git push
+          else
+            echo "No changes."
